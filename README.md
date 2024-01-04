@@ -33,7 +33,7 @@ The resulting effect is similiar to games like Quake and Half-Life. The camera c
 - Does not work with Godot Physics!!! Use the Godot Jolt plugin!!!
 - This is not a drag-and-drop character controller.
 - I've only tested it on low poly terrains.
-- Kinematic character controllers should use static bodies, or animatable bodies.
+- Kinematic character controllers should use static bodies, or animatable bodies (sync_to_physics must be set to false!).
 - The camera's movement on the Y axis should be smoothly interpolated, to avoid the camera teleporting.
 
 ## About the scripts
