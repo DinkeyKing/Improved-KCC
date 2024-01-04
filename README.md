@@ -15,6 +15,10 @@ Writing custom collision response is unavoidable, since the stepping needs to oc
 
 The goal of this project is to provide an efficent solution to the problem, relying on collision data and taking advantage of the 'Jolt 3D' physics engine, avoiding the need to write custom collision detection.
 
+## Main idea
+My implementation follows the snapping method. When colliding with a step during 'move and slide', we snap the player up to the height of the step surface, then continue on with the remaining motion. When moving down steps, we simply snap the player to the floor.
+The resulting effect is similiar to games like Quake and Half-Life. The camera can be interpolated on the Y axis during stepping, for a more natural look in first person view.
+
 ## Features
 - Moving and sliding on walls, slopes, and ceilings, with velocity clipping, as you'd expect.
 - Flat bottomed collision shapes no longer get stuck on the foot of ramps.
