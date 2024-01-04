@@ -2,6 +2,8 @@
 Custom kinematic character controller with the ability to climb steps, for Godot.
 This project is a demonstration of my solution to the stepping problem. (I also implement other common features.)
 
+Does not work with Godot Physics!!! Use the Godot Jolt plugin!!!
+
 ## Motivaton
 The built in character controller fails to provide support for stair/step climbing. Flat bottomed collision shapes like cylinders and boxes get stuck on the foot of slopes, forcing the user to use a capsule shape (or other round shapes). I've also experienced buggy behaviour moving on top of rigid bodies. This is unacceptable. 
 
