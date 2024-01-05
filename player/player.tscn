@@ -14,6 +14,7 @@ script = ExtResource("1_bqq5i")
 shape = SubResource("CylinderShape3D_65rmm")
 
 [node name="PivotY" type="Node3D" parent="."]
+top_level = true
 script = ExtResource("2_gif5g")
 
 [node name="PivotX" type="Node3D" parent="PivotY"]
