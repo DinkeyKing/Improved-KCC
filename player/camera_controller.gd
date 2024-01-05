@@ -25,7 +25,7 @@ class_name PlayerCamera
 # CONSTANTS #
 #############
 
-const Y_MOTION_LERP_SPEED : float = 35.0
+const Y_MOTION_LERP_SPEED : float = 40.0 # Default: 40.0
 
 #############
 # VARIABLES #
