@@ -12,7 +12,7 @@ config_version=5
 
 config/name="Improved Kinematic Character Controller Demo"
 run/main_scene="res://main.tscn"
-config/features=PackedStringArray("4.2", "Forward Plus")
+config/features=PackedStringArray("4.2", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
@@ -25,12 +25,21 @@ project/assembly_name="Improved Character Controller Demo"
 
 [editor]
 
+movie_writer/mjpeg_quality=0.4
+movie_writer/movie_file="D:/Gamedev/Godot/Godot4.2/Projects/Improved-KCC/demo.avi"
 version_control/plugin_name="GitPlugin"
 version_control/autoload_on_startup=true
 
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/qodot/plugin.cfg")
+
+[file_customization]
+
+folder_colors={
+"res://player/": "green",
+"res://utilities/": "purple"
+}
 
 [input]
 

@@ -5,7 +5,7 @@ This project is a demonstration of my solution to the stepping problem. (I also 
 Does not work with Godot Physics!!! Use the Godot Jolt plugin!!!
 
 ## Motivaton
-The built in character controller fails to provide support for stair/step climbing. Flat bottomed collision shapes like cylinders and boxes get stuck on the foot of slopes, forcing the user to use a capsule shape (or other round shapes). I've also experienced buggy behaviour moving on top of rigid bodies.
+The built in character controller doesn't provide support for stair/step climbing. Flat bottomed collision shapes like cylinders and boxes get stuck on the foot of slopes, forcing the user to use a capsule shape (or other round shapes).
 
 The stepping problem is not trivial, and the lack of resources and working implementations makes solving it a difficult task. 
 

@@ -25,3 +25,6 @@ addons/
 # Trenchbroom
 trenchbroom/
 maps/
+
+# Recordings
+*.avi
