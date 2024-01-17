@@ -50,9 +50,9 @@ const LEDGE_DETECT_OFFSET : float = 0.003    # Default: 0.003
 
 # Physics
 const PUSH_FACTOR : float = 0.5             # Default: 0.5
-const FRICTION_FACTOR : float = 13.0        # Default: 13.0
+const FRICTION_FACTOR : float = 15.0        # Default: 15.0
 const WEIGHT_FACTOR : float = 6.0           # Default: 6.0
-const IMPACT_FACTOR : float = 1.0           # Default: 1.0
+const IMPACT_FACTOR : float = 2.0           # Default: 2.0
 const JUMP_FACTOR : float = 2.0             # Default: 2.0
 
 
@@ -61,6 +61,7 @@ const JUMP_FACTOR : float = 2.0             # Default: 2.0
 #############
 
 var velocity := Vector3.ZERO
+var impulse_velocity := Vector3.ZERO
 var floor_impact_velocity := Vector3.ZERO
 var real_velocity := Vector3.ZERO
 var speed : float = 0.0
@@ -73,6 +74,7 @@ var prev_platform_collider : Node3D
 
 var is_jumping : bool = false
 
+#var linear_velocity := Vector3.ZERO
 
 #############
 # FUNCTIONS #
@@ -91,15 +93,20 @@ func get_input_direction() -> Vector3 :
 func set_initial_velocity(move_dir : Vector3, delta: float) -> void :
 	var lerp_speed : float = ground_lerp_speed
 	
-	# Vertical velocity
 	if is_on_floor() :
 		lerp_speed = ground_lerp_speed
+		
+		# Apply friction to impulse velocity
+		impulse_velocity.y = 0.0
+		impulse_velocity.x = lerpf(impulse_velocity.x, 0.0, delta * lerp_speed)
+		impulse_velocity.z = lerpf(impulse_velocity.z, 0.0, delta * lerp_speed)
 		
 		if jump_input_buffer.is_input_just_pressed() :
 			velocity.y = jump_velocity_length  # Add jump
 			is_jumping = true
 			
 			apply_jump_impulse_to_objects()
+			
 		elif velocity.y <= 0.0 :  # On the floor, jump not pressed
 			is_jumping = false
 			
@@ -109,9 +116,16 @@ func set_initial_velocity(move_dir : Vector3, delta: float) -> void :
 		if linear_velocity.y <= 0.0 :  # If the vertical dynamic velocity is consumed by gravity
 			velocity.y -= gravity * delta  # Add gravity to kinematic velocity
 	
-	# Horizontal velocity
+	# Apply friction to horizontal velocity
 	velocity.x = lerpf(velocity.x, move_dir.x * speed, delta * lerp_speed)
 	velocity.z = lerpf(velocity.z, move_dir.z * speed, delta * lerp_speed)
+	
+	# Move on top of rigid bodies
+	var col : KinematicCollision3D = get_collision_below()
+	if col and col.get_collider() is RigidBody3D :
+		var rigidbody := col.get_collider() as RigidBody3D
+		impulse_velocity.x = rigidbody.linear_velocity.x
+		impulse_velocity.z = rigidbody.linear_velocity.z
 
 
 func get_feet_position() -> Vector3 :
@@ -122,7 +136,7 @@ func get_feet_position() -> Vector3 :
 
 
 func apply_kinematic_impulse(impulse : Vector3) -> void :
-	velocity += impulse / kin_mass
+	impulse_velocity += impulse / kin_mass
 
 
 func get_collision_below() -> KinematicCollision3D :
@@ -285,7 +299,7 @@ func get_platform_motion(delta : float) -> Vector3 :
 	
 	if not col or not col.get_collider() is AnimatableBody3D :
 		if platform_vel != Vector3.ZERO and add_velocity_on_leave :  # Just left platform
-			linear_velocity += platform_vel
+			impulse_velocity += platform_vel
 		
 		prev_platform_pos = Vector3.ZERO
 		platform_vel = Vector3.ZERO
@@ -503,10 +517,14 @@ func _physics_process(delta : float) -> void :
 	var platform_motion : Vector3 = get_platform_motion(delta)
 	
 	# Do the 'move and slide'
+	var movement_motion : Vector3 = velocity * delta
+	var impulse_motion : Vector3 = impulse_velocity * delta
+	
 	floor_impact_velocity = Vector3.ZERO
 	last_rigid_body_collision = null
 	slide_depth = 0
-	move_and_slide( (velocity * delta) + platform_motion)
+	
+	move_and_slide( movement_motion + platform_motion + impulse_motion )
 	
 	# The real velocity is the modified velocity.
 	real_velocity = velocity
@@ -520,19 +538,9 @@ func _physics_process(delta : float) -> void :
 func _integrate_forces(state : PhysicsDirectBodyState3D) -> void :
 	if state.linear_velocity == Vector3.ZERO : return
 	
-	# Move on top of rigid bodies
-	var col : KinematicCollision3D = get_collision_below()
-	if col and col.get_collider() is RigidBody3D :
-		var rigidbody := col.get_collider() as RigidBody3D
-		state.linear_velocity.x = rigidbody.linear_velocity.x
-		state.linear_velocity.z = rigidbody.linear_velocity.z
-	
 	if is_on_floor() :
 		state.linear_velocity.y = 0.0
-		
-		# Apply floor friction to dynamic velocity
-		if not col.get_collider() is RigidBody3D :
-			state.linear_velocity = state.linear_velocity.lerp(Vector3.ZERO, state.step * ground_lerp_speed)
+		state.linear_velocity = state.linear_velocity.lerp(Vector3.ZERO, state.step * ground_lerp_speed)
 		
 	elif state.linear_velocity.y > 0.0 :
 		state.linear_velocity.y -= gravity * state.step  # Add gravity

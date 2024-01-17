@@ -11,5 +11,5 @@ extends Node3D
 # FUNCTIONS #
 #############
 
-func _ready():
+func _ready() -> void :
 	animation_player.play("move")

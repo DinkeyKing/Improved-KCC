@@ -4,8 +4,8 @@
 [ext_resource type="Script" path="res://player/camera_controller.gd" id="2_gif5g"]
 [ext_resource type="Script" path="res://utilities/input_buffer.gd" id="3_smg7c"]
 
-[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_fek4t"]
-friction = 0.1
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_dpn2c"]
+friction = 0.5
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_1wfy3"]
 
@@ -13,9 +13,10 @@ friction = 0.1
 axis_lock_angular_x = true
 axis_lock_angular_y = true
 axis_lock_angular_z = true
-physics_material_override = SubResource("PhysicsMaterial_fek4t")
+physics_material_override = SubResource("PhysicsMaterial_dpn2c")
 gravity_scale = 0.0
 sleeping = true
+lock_rotation = true
 freeze_mode = 1
 script = ExtResource("1_bqq5i")
 
