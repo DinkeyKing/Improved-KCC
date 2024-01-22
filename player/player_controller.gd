@@ -51,7 +51,7 @@ const LEDGE_DETECT_OFFSET : float = 0.003    # Default: 0.003
 
 # Physics
 const PUSH_FACTOR : float = 0.5               # Default: 0.5
-const FRICTION_FACTOR : float = 15.0           # Default: 15.0
+const FRICTION_FACTOR : float = 10.0           # Default: 10.0
 const WEIGHT_FACTOR : float = 10.0             # Default: 10.0
 const IMPACT_FACTOR : float = 2.0             # Default: 2.0
 const JUMP_FACTOR : float = 2.0               # Default: 2.0
