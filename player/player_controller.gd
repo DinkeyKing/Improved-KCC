@@ -18,7 +18,8 @@ class_name Player
 
 @export_group("Physics")
 @export var kin_mass : float = 0.3
-# Kinematic mass, does not correlate with the mass used in the physics engine.
+	# Kinematic mass, does not correlate with the mass used in the physics engine.
+@export var impulse_lerp_speed : float = 7.0  # The friction for impulses can be different
 
 
 #########
@@ -49,11 +50,13 @@ const LEDGE_DETECT_OFFSET : float = 0.003    # Default: 0.003
 # |CEILING|        |WALL|       |FLOOR|
 
 # Physics
-const PUSH_FACTOR : float = 0.5             # Default: 0.5
-const FRICTION_FACTOR : float = 15.0        # Default: 15.0
-const WEIGHT_FACTOR : float = 6.0           # Default: 6.0
-const IMPACT_FACTOR : float = 2.0           # Default: 2.0
-const JUMP_FACTOR : float = 2.0             # Default: 2.0
+const PUSH_FACTOR : float = 0.5               # Default: 0.5
+const FRICTION_FACTOR : float = 15.0           # Default: 15.0
+const WEIGHT_FACTOR : float = 10.0             # Default: 10.0
+const IMPACT_FACTOR : float = 2.0             # Default: 2.0
+const JUMP_FACTOR : float = 2.0               # Default: 2.0
+const IMPULSE_CHANGE_FACTOR : float = 0.08    # Default: 0.08
+const RB_VEL_LIMIT : float = 10.0             # Default: 10.0
 
 
 #############
@@ -61,20 +64,19 @@ const JUMP_FACTOR : float = 2.0             # Default: 2.0
 #############
 
 var velocity := Vector3.ZERO
+var platform_velocity := Vector3.ZERO
 var impulse_velocity := Vector3.ZERO
 var floor_impact_velocity := Vector3.ZERO
-var real_velocity := Vector3.ZERO
+var real_move_velocity := Vector3.ZERO
 var speed : float = 0.0
 var gravity : float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var slide_depth : int = 0
 var last_rigid_body_collision : KinematicCollision3D
-var prev_platform_pos := Vector3.ZERO
-var platform_vel := Vector3.ZERO
-var prev_platform_collider : Node3D
 
 var is_jumping : bool = false
 
 #var linear_velocity := Vector3.ZERO
+
 
 #############
 # FUNCTIONS #
@@ -98,8 +100,9 @@ func set_initial_velocity(move_dir : Vector3, delta: float) -> void :
 		
 		# Apply friction to impulse velocity
 		impulse_velocity.y = 0.0
-		impulse_velocity.x = lerpf(impulse_velocity.x, 0.0, delta * lerp_speed)
-		impulse_velocity.z = lerpf(impulse_velocity.z, 0.0, delta * lerp_speed)
+		
+		impulse_velocity.x = lerpf(impulse_velocity.x, 0.0, delta * impulse_lerp_speed)
+		impulse_velocity.z = lerpf(impulse_velocity.z, 0.0, delta * impulse_lerp_speed)
 		
 		if jump_input_buffer.is_input_just_pressed() :
 			velocity.y = jump_velocity_length  # Add jump
@@ -113,24 +116,17 @@ func set_initial_velocity(move_dir : Vector3, delta: float) -> void :
 	else : # Not on floor
 		lerp_speed = air_lerp_speed
 		
-		if linear_velocity.y <= 0.0 :  # If the vertical dynamic velocity is consumed by gravity
-			velocity.y -= gravity * delta  # Add gravity to kinematic velocity
+		velocity.y -= gravity * delta  # Add gravity to kinematic velocity
 	
 	# Apply friction to horizontal velocity
 	velocity.x = lerpf(velocity.x, move_dir.x * speed, delta * lerp_speed)
 	velocity.z = lerpf(velocity.z, move_dir.z * speed, delta * lerp_speed)
-	
-	# Move on top of rigid bodies
-	var col : KinematicCollision3D = get_collision_below()
-	if col and col.get_collider() is RigidBody3D :
-		var rigidbody := col.get_collider() as RigidBody3D
-		impulse_velocity.x = rigidbody.linear_velocity.x
-		impulse_velocity.z = rigidbody.linear_velocity.z
 
 
 func get_feet_position() -> Vector3 :
 	var feet_pos : Vector3 = global_position
 	feet_pos.y -= (collider.shape as CylinderShape3D).height / 2.0  # Cylinder shape is assumed
+	#feet_pos.y -= (collider.shape as BoxShape3D).size.y / 2.0
 	
 	return feet_pos
 
@@ -157,8 +153,9 @@ func apply_push_impulse_to_objects(col : KinematicCollision3D) -> void :
 			var horizontal_factor : float = absf(collision_normal[1])  # How horizontal the surface is
 			
 			# Horizontal
-			var h_vel : Vector3 = velocity
+			var h_vel : Vector3 = velocity + impulse_velocity
 			h_vel.y = 0.0
+			
 			var impulse_length : float = h_vel.length() * vertical_factor * PUSH_FACTOR
 				# The more horizontal the push surface is,
 				# the less effective the horizontal push will become.
@@ -178,21 +175,26 @@ func apply_push_impulse_to_objects(col : KinematicCollision3D) -> void :
 			
 			# Vertical
 			var v_vel := Vector3.ZERO
-			v_vel.y = velocity.y
+			v_vel.y = velocity.y + impulse_velocity.y
+			
 			impulse_length = v_vel.length() * horizontal_factor * PUSH_FACTOR
+				# The more vertical the push surface is,
+				# the less effective the vertical push will become.
 			impulse_length *= rigidbody.mass / (kin_mass * jump_velocity_length)
+				# The impulse length is normalized to achieve smooth pushing.
 			impulse = impulse_length * -collision_normal
 			impulse_pos = col.get_position(i)
 			
 			# Apply vertical pushing impulse
 			rigidbody.apply_impulse(impulse, impulse_pos - rigidbody.global_position)
 			
-			# Floor impact impulse
+			# Floor impact impulse (vertical only)
 			if collision_normal[1] <= MIN_FLOOR_Y : return # Proceed only if on top of rigidbody surface
 			
-			floor_impact_velocity.y = minf(floor_impact_velocity.y, 0.0) # Make sure it's negative
-			impulse = floor_impact_velocity * kin_mass * horizontal_factor * IMPACT_FACTOR
-			# The more horizontal the push surface is,
+			var v_impact_vel := Vector3(0.0, minf(floor_impact_velocity.y, 0.0), 0.0)
+				# Only non-positive y value
+			impulse = v_impact_vel * kin_mass * horizontal_factor * IMPACT_FACTOR
+			# The more horizontal the impact surface is,
 			# the less effective the impact impulse will become.
 			impulse_pos = get_feet_position()
 			
@@ -213,13 +215,19 @@ func apply_weight_force_to_objects() -> void :
 			var collision_normal : Vector3 = col.get_normal(i)
 			var horizontal_factor : float = absf(collision_normal[1])  # How horizontal the surface is
 			
-			var weight_force := Vector3.DOWN * gravity * WEIGHT_FACTOR
-			var friction_force : Vector3 = velocity * FRICTION_FACTOR
+			var h_vel : Vector3 = velocity + impulse_velocity
+			h_vel.y = 0.0
+			
+			var weight_force := -collision_normal * gravity * WEIGHT_FACTOR
+			var friction_force : Vector3 = h_vel * FRICTION_FACTOR
 			var force : Vector3 = (weight_force + friction_force) * kin_mass * horizontal_factor
 			var force_pos : Vector3 = get_feet_position()
 			
 			# Apply weight and friction force
 			rigidbody.apply_force(force, force_pos - rigidbody.global_position)
+			
+			# Sligtly get pushed from the surface to allow objects to topple over
+			move_and_collide(collision_normal * 0.04)
 
 
 func apply_jump_impulse_to_objects() -> void :
@@ -240,6 +248,25 @@ func apply_jump_impulse_to_objects() -> void :
 			rigidbody.apply_impulse(impulse, impulse_pos - rigidbody.global_position)
 
 
+# Rigid bodies are handled differently than moving platforms, because
+# you can get unreasonably large velocites on top of them.
+func modify_velocity_on_rigid_bodies(col : KinematicCollision3D) -> void :
+	if col and col.get_collider() is RigidBody3D :
+		var rigidbody := col.get_collider() as RigidBody3D
+		var collision_normal : Vector3 = col.get_normal()
+		
+		if collision_normal[1] < MIN_FLOOR_Y : return
+		
+		var horizontal_factor : float = absf(collision_normal[1])  # How horizontal the surface is
+		
+		# The platform velocity is applied with friction
+		var weight : float = ground_lerp_speed * get_physics_process_delta_time()
+		platform_velocity = platform_velocity.lerp(rigidbody.linear_velocity * horizontal_factor, weight)
+		
+		# Limit velocity
+		platform_velocity.limit_length(RB_VEL_LIMIT)
+
+
 func limit_horizontal_velocity_on_rigid_body(rigidbody_mass : float) -> void :
 	var h_vel : Vector3 = velocity
 	h_vel.y = 0.0
@@ -248,10 +275,26 @@ func limit_horizontal_velocity_on_rigid_body(rigidbody_mass : float) -> void :
 	h_vel = h_vel.limit_length( (1.0 / rigidbody_mass) * kin_mass * speed )
 	velocity.x = h_vel.x
 	velocity.z = h_vel.z
+	
+	# Decrease impulse velocity
+	var h_imp_vel : Vector3 = impulse_velocity
+	impulse_velocity.y = 0.0
+	
+	var lerp_weight : float = (rigidbody_mass / kin_mass) * IMPULSE_CHANGE_FACTOR
+	lerp_weight = minf(1.0 , lerp_weight)  # Make sure not to change direction
+	
+	h_imp_vel = h_imp_vel.lerp(Vector3.ZERO, lerp_weight)
+	
+	impulse_velocity.x = h_imp_vel.x
+	impulse_velocity.z = h_imp_vel.z
 
 
 func limit_vertical_velocity_on_rigid_body(rigidbody_mass : float) -> void :
-	velocity.y = minf( velocity.y, (1.0 / rigidbody_mass) * kin_mass * jump_velocity_length )
+	var lerp_weight : float = (rigidbody_mass / kin_mass) * IMPULSE_CHANGE_FACTOR
+	lerp_weight = minf(1.0, lerp_weight)  # Make sure not to change direction
+	
+	velocity.y = lerpf(velocity.y, 0.0, lerp_weight)
+	impulse_velocity.y = lerpf(impulse_velocity.y, 0.0, lerp_weight)
 
 
 func is_on_floor() -> bool :
@@ -291,39 +334,42 @@ func snap_to_floor(snap_distance : float) -> void :
 		move_and_collide(travel, false, SNAP_SAFE_MARGIN , true)
 
 
-func get_platform_motion(delta : float) -> Vector3 :
+func set_platform_velocity() -> void :
 	var col : KinematicCollision3D
-	var platform_motion := Vector3.ZERO
 	
-	col = move_and_collide(Vector3.DOWN * CHECK_FLOOR_DISTANCE, true, SAFE_MARGIN, true)
+	col = move_and_collide(Vector3.DOWN * CHECK_FLOOR_DISTANCE, true, SAFE_MARGIN, true, 5)
 	
+	if col and col.get_collider() is RigidBody3D :
+		modify_velocity_on_rigid_bodies(col)
+		return
+	 
 	if not col or not col.get_collider() is AnimatableBody3D :
-		if platform_vel != Vector3.ZERO and add_velocity_on_leave :  # Just left platform
-			impulse_velocity += platform_vel
-		
-		prev_platform_pos = Vector3.ZERO
-		platform_vel = Vector3.ZERO
-		return Vector3.ZERO
-	
-	var platform_collider := col.get_collider() as Node3D
-	
-	if platform_collider != prev_platform_collider :
-		prev_platform_collider = platform_collider
-		
-		prev_platform_pos = Vector3.ZERO
-		platform_vel = Vector3.ZERO
-		return Vector3.ZERO
-	
-	if col.get_normal()[1] > MIN_FLOOR_Y :
-		if prev_platform_pos != Vector3.ZERO :  # prev_platform_pos is set
-			platform_motion =  platform_collider.global_position - prev_platform_pos
-			platform_motion.y = 0.0
+		if add_velocity_on_leave  :  # Just left platform
+			platform_velocity.y = maxf(0.0, platform_velocity.y)  # Make sure it's not negative
+			impulse_velocity += platform_velocity
 			
-			platform_vel = platform_motion / delta
-			
-		prev_platform_pos = platform_collider.global_position
+		platform_velocity = Vector3.ZERO
+		return
 	
-	return platform_motion
+	var platform_collider := col.get_collider() as PhysicsBody3D
+	
+	if col.get_normal()[1] >= MIN_FLOOR_Y :
+		var platform_body_state := PhysicsServer3D.body_get_direct_state(platform_collider)
+		
+		var pos : Vector3 = global_position - platform_collider.global_position
+		
+		var plat_vel_goal : Vector3 = platform_body_state.get_velocity_at_local_position(pos)
+		
+		platform_velocity.x = plat_vel_goal.x
+		platform_velocity.z = plat_vel_goal.z
+		
+		# The vertical component is lerped to allow platforms to launch the player up
+		var weight : float = ground_lerp_speed * get_physics_process_delta_time()
+		platform_velocity.y = lerpf(platform_velocity.y,plat_vel_goal.y, weight)
+		
+	else : platform_velocity = Vector3.ZERO
+	
+	return
 
 
 # The 'move and slide' algorithm in it's most basic form. This method is unused.
@@ -373,7 +419,7 @@ func move_and_slide(motion : Vector3) -> void :
 	var rigidbody : RigidBody3D = null
 	for i in col.get_collision_count():
 		if col.get_collider(i) is RigidBody3D:
-			rigidbody = col.get_collider(i)
+			rigidbody = col.get_collider(i) as RigidBody3D
 			last_rigid_body_collision = col
 			break
 	
@@ -384,13 +430,13 @@ func move_and_slide(motion : Vector3) -> void :
 	var col_pos_offset : Vector3 = collision_position - collision_normal * LEDGE_DETECT_OFFSET
 		# If the collision point is not offsetted slightly inwards the ledge,
 		# the raycast will miss the surface in some cases.
-	var ray_origin = col_pos_offset + Vector3.UP * STEP_HEIGHT
-	var ray_dest = col_pos_offset
+	var ray_origin : Vector3 = col_pos_offset + Vector3.UP * STEP_HEIGHT
+	var ray_dest : Vector3 = col_pos_offset
 	
 	raycast.intersect(ray_origin, ray_dest, self, collision_mask, space_state)
 	
 	if is_on_floor() and collided_with_wall and raycast.hit :  # Ledge detected
-		var ledge_pos = raycast.endpos
+		var ledge_pos : Vector3 = raycast.endpos
 		var feet_pos : Vector3 = get_feet_position()
 		var collision_height : float = ledge_pos.y - feet_pos.y
 		
@@ -407,16 +453,17 @@ func move_and_slide(motion : Vector3) -> void :
 			
 			# FORWARD
 			test_transform.origin = motion_tester.endpos
-			# Important to extend the forward motion by some amount! 
+			# It's important to extend the forward motion by some amount! 
 			# (Because near ledges the reported normal is often incorrect.)
 			var forward : Vector3 = remaining_motion + motion_dir * 0.1  # <- Magic number :(
 			motion_tester.test_motion(self, test_transform, forward, SAFE_MARGIN, false)
 			
 			# SLIDE (if needed)
-			if motion_tester.hit and motion_tester.normal[1] < MIN_FLOOR_Y :
-				test_transform.origin = motion_tester.endpos
-				var slide_motion : Vector3 = motion_tester.remainder.slide(motion_tester.normal)
-				motion_tester.test_motion(self, test_transform, slide_motion, SAFE_MARGIN, false)
+			for i in range(3) :
+				if motion_tester.hit and motion_tester.normal[1] < MIN_FLOOR_Y :
+					test_transform.origin = motion_tester.endpos
+					var slide_motion : Vector3 = motion_tester.remainder.slide(motion_tester.normal)
+					motion_tester.test_motion(self, test_transform, slide_motion, SAFE_MARGIN, false)
 			
 			# DOWN
 			test_transform.origin = motion_tester.endpos
@@ -428,8 +475,9 @@ func move_and_slide(motion : Vector3) -> void :
 				
 				# The motion is extended by the collision shape's margin to make sure
 				# the step is fully stepped, so as not to fall down at lower velocities.
+				# The motion is aslo extended by the platform motion to avoid falling back
+				# after stepping on moving platforms.
 				motion = remaining_motion + motion_dir * COLLISION_SHAPE_MARGIN
-				motion.y = 0.0
 				
 				# Iterate
 				slide_depth += 1
@@ -440,10 +488,13 @@ func move_and_slide(motion : Vector3) -> void :
 	# If yes, move up a bit and don't modify the motion or velocity!!!
 	if collided_with_wall :
 		var motion_tester := MotionTester.new()
+		
 		var up := Vector3.UP * COLLISION_SHAPE_MARGIN
+		
 		var test_motion : Vector3 = motion
 		test_motion.y = 0.0  # Remove vertical component
-		test_motion = test_motion.normalized()  # Extend the test motion to unit length
+		test_motion = test_motion.normalized() * 0.1  # Set the length to an arbitrary number
+		
 		var test_transform := Transform3D(basis, global_position + up)
 		
 		motion_tester.test_motion(self, test_transform, test_motion, SAFE_MARGIN, false)
@@ -473,6 +524,8 @@ func move_and_slide(motion : Vector3) -> void :
 		
 		else :  # Static collision
 			velocity = velocity.slide(wall_normal)  # Clip velocity
+			impulse_velocity = impulse_velocity.slide(wall_normal)  # Clip impulse velocity
+			platform_velocity = platform_velocity.slide(wall_normal) # Clip platform velocity
 		
 	else :
 		h_motion = h_motion.slide(collision_normal)
@@ -482,12 +535,13 @@ func move_and_slide(motion : Vector3) -> void :
 	v_motion.y = remaining_motion.y
 	
 	if collided_with_floor :
-		floor_impact_velocity = velocity  # Store impact velocity.
+		floor_impact_velocity = velocity + impulse_velocity + linear_velocity  # Store impact velocity.
 		# (Fall damage could be applied here.)
 		
-		v_motion.y = 0.0  # Stop sliding on slope
+		# These help to stop sliding on slope
+		v_motion.y = 0.0
 		if not is_jumping : velocity.y = 0.0  # Clip vertical velocity
-	
+		
 	else :
 		v_motion = v_motion.slide(collision_normal)
 	
@@ -498,6 +552,8 @@ func move_and_slide(motion : Vector3) -> void :
 		
 		else :  # Static collision
 			velocity = velocity.slide(collision_normal)  # Clip velocity
+			impulse_velocity = impulse_velocity.slide(collision_normal)  # Clip impulse velocity
+			platform_velocity = platform_velocity.slide(collision_normal) # Clip platform velocity
 	
 	# Sum motions
 	motion = h_motion + v_motion
@@ -507,40 +563,48 @@ func move_and_slide(motion : Vector3) -> void :
 	move_and_slide(motion)
 
 
-func _physics_process(delta : float) -> void :
+func _physics_process(delta : float) -> void :	
 	var input_dir : Vector3 = get_input_direction()
 	
 	speed = run_speed
 	
+	if Input.is_action_just_pressed("impulse") :
+		apply_kinematic_impulse(-head.transform.basis.z * 3.0)  # Dash forward
+	
 	set_initial_velocity(input_dir, delta)  # Jump impulse is also applied here
 	
-	var platform_motion : Vector3 = get_platform_motion(delta)
+	set_platform_velocity()
 	
 	# Do the 'move and slide'
 	var movement_motion : Vector3 = velocity * delta
 	var impulse_motion : Vector3 = impulse_velocity * delta
+	var platform_motion : Vector3 = platform_velocity * delta
 	
 	floor_impact_velocity = Vector3.ZERO
 	last_rigid_body_collision = null
 	slide_depth = 0
 	
-	move_and_slide( movement_motion + platform_motion + impulse_motion )
+	move_and_slide(movement_motion + impulse_motion + platform_motion)
 	
-	# The real velocity is the modified velocity.
-	real_velocity = velocity
+	# The real move velocity is the modified velocity. For things like camera tilt.
+	real_move_velocity = velocity
 	
 	# Kinematic physics interaction
 	apply_push_impulse_to_objects(last_rigid_body_collision)
+	
 	apply_weight_force_to_objects()
 
 
-# Dynamic physics interactions
+# Physics state control
 func _integrate_forces(state : PhysicsDirectBodyState3D) -> void :
 	if state.linear_velocity == Vector3.ZERO : return
 	
 	if is_on_floor() :
-		state.linear_velocity.y = 0.0
-		state.linear_velocity = state.linear_velocity.lerp(Vector3.ZERO, state.step * ground_lerp_speed)
+		state.linear_velocity.y = maxf(0.0, state.linear_velocity.y)
 		
-	elif state.linear_velocity.y > 0.0 :
-		state.linear_velocity.y -= gravity * state.step  # Add gravity
+		if platform_velocity.is_zero_approx() :  # Not on a moving platform
+			# Apply friction
+			var weight : float = state.step * impulse_lerp_speed
+			state.linear_velocity = state.linear_velocity.lerp(Vector3.ZERO, weight)
+			
+		else  : state.linear_velocity = Vector3.ZERO

@@ -1,6 +1,7 @@
-[gd_scene load_steps=7 format=3 uid="uid://denootvrrsqle"]
+[gd_scene load_steps=6 format=3 uid="uid://denootvrrsqle"]
 
 [ext_resource type="Script" path="res://entities/moving_platform.gd" id="1_538eu"]
+[ext_resource type="AnimationLibrary" uid="uid://bqffsub20t40a" path="res://animations/moving_platform.res" id="2_51xqf"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_1u6br"]
 
@@ -8,27 +9,12 @@
 
 [sub_resource type="BoxMesh" id="BoxMesh_prw3n"]
 
-[sub_resource type="Animation" id="Animation_s7x22"]
-resource_name = "move"
-length = 2.0
-loop_mode = 2
-tracks/0/type = "position_3d"
-tracks/0/imported = false
-tracks/0/enabled = true
-tracks/0/path = NodePath(".")
-tracks/0/interp = 2
-tracks/0/loop_wrap = true
-tracks/0/keys = PackedFloat32Array(0, 1, 0, 0, 0, 2, 1, 0, 0, -5)
-
-[sub_resource type="AnimationLibrary" id="AnimationLibrary_lpq8m"]
-_data = {
-"move": SubResource("Animation_s7x22")
-}
-
 [node name="MovingPlatform" type="Node3D"]
 script = ExtResource("1_538eu")
 
 [node name="AnimatableBody" type="AnimatableBody3D" parent="."]
+process_priority = 5
+process_physics_priority = 5
 physics_material_override = SubResource("PhysicsMaterial_1u6br")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="AnimatableBody"]
@@ -41,5 +27,5 @@ mesh = SubResource("BoxMesh_prw3n")
 root_node = NodePath("../AnimatableBody")
 callback_mode_process = 0
 libraries = {
-"": SubResource("AnimationLibrary_lpq8m")
+"moving_platform": ExtResource("2_51xqf")
 }

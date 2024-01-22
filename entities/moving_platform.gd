@@ -1,5 +1,12 @@
 extends Node3D
 
+##############
+# PROPERTIES #
+##############
+
+@export var animation_name : String = "moving_platform/move"
+
+
 #########
 # NODES #
 #########
@@ -12,4 +19,4 @@ extends Node3D
 #############
 
 func _ready() -> void :
-	animation_player.play("move")
+	animation_player.play(animation_name)

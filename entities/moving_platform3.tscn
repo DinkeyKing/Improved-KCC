@@ -1,0 +1,37 @@
+[gd_scene load_steps=7 format=3 uid="uid://b8grru5nwlcg7"]
+
+[ext_resource type="Script" path="res://entities/moving_platform.gd" id="1_mhp0o"]
+[ext_resource type="AnimationLibrary" uid="uid://bqffsub20t40a" path="res://animations/moving_platform.res" id="2_rdmyv"]
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_1u6br"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_qyfca"]
+albedo_color = Color(0, 0.215686, 1, 1)
+
+[sub_resource type="PrismMesh" id="PrismMesh_qyf6y"]
+material = SubResource("StandardMaterial3D_qyfca")
+left_to_right = 0.3
+size = Vector3(5, 2, 2)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_k0acm"]
+points = PackedVector3Array(-1.00039, 1, 1, 2.5, -1, 1, -1.00039, 1, -1, -2.5, -1, 1, 2.5, -1, -1, -2.5, -1, -1)
+
+[node name="MovingPlatform" type="Node3D"]
+script = ExtResource("1_mhp0o")
+
+[node name="AnimatableBody" type="AnimatableBody3D" parent="."]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0, 0)
+physics_material_override = SubResource("PhysicsMaterial_1u6br")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="AnimatableBody"]
+mesh = SubResource("PrismMesh_qyf6y")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="AnimatableBody"]
+shape = SubResource("ConvexPolygonShape3D_k0acm")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+root_node = NodePath("../AnimatableBody")
+callback_mode_process = 0
+libraries = {
+"moving_platform": ExtResource("2_rdmyv")
+}

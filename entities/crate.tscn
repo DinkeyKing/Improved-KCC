@@ -3,13 +3,11 @@
 [ext_resource type="PackedScene" uid="uid://b5a7luq6vo36j" path="res://models/wooden_crate1.glb" id="1_idrbo"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_5prpy"]
-friction = 0.8
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_3lbfb"]
 
 [node name="Crate" type="RigidBody3D"]
 physics_material_override = SubResource("PhysicsMaterial_5prpy")
-can_sleep = false
 
 [node name="wooden_crate1" parent="." instance=ExtResource("1_idrbo")]
 

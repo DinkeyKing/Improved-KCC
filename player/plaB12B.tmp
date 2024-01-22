@@ -1,25 +1,24 @@
 [gd_scene load_steps=6 format=3 uid="uid://cnvaw2hv45pha"]
 
-[ext_resource type="Script" path="res://player/player_controller.gd" id="1_l0d0d"]
+[ext_resource type="Script" path="res://player/player_controller.gd" id="1_bqq5i"]
 [ext_resource type="Script" path="res://player/camera_controller.gd" id="2_gif5g"]
 [ext_resource type="Script" path="res://utilities/input_buffer.gd" id="3_smg7c"]
 
-[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_tlqtl"]
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_dpn2c"]
+friction = 0.5
 
-[sub_resource type="CylinderShape3D" id="CylinderShape3D_8jejx"]
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_1wfy3"]
 
 [node name="Player" type="RigidBody3D"]
 axis_lock_angular_x = true
 axis_lock_angular_y = true
 axis_lock_angular_z = true
-physics_material_override = SubResource("PhysicsMaterial_tlqtl")
+physics_material_override = SubResource("PhysicsMaterial_dpn2c")
 gravity_scale = 0.0
-lock_rotation = true
-freeze_mode = 1
-script = ExtResource("1_l0d0d")
+script = ExtResource("1_bqq5i")
 
 [node name="CollisionShape" type="CollisionShape3D" parent="."]
-shape = SubResource("CylinderShape3D_8jejx")
+shape = SubResource("CylinderShape3D_1wfy3")
 
 [node name="PivotY" type="Node3D" parent="."]
 top_level = true
