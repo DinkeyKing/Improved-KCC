@@ -1,4 +1,4 @@
-extends RigidBody3D
+extends PhysicsBody3D
 class_name Player
 
 ##############
@@ -51,12 +51,15 @@ const LEDGE_DETECT_OFFSET : float = 0.003    # Default: 0.003
 
 # Physics
 const PUSH_FACTOR : float = 0.5               # Default: 0.5
-const FRICTION_FACTOR : float = 10.0           # Default: 10.0
-const WEIGHT_FACTOR : float = 10.0             # Default: 10.0
+const FRICTION_FACTOR : float = 10.0          # Default: 10.0
+const WEIGHT_FACTOR : float = 10.0            # Default: 10.0
 const IMPACT_FACTOR : float = 2.0             # Default: 2.0
 const JUMP_FACTOR : float = 2.0               # Default: 2.0
 const IMPULSE_CHANGE_FACTOR : float = 0.08    # Default: 0.08
 const RB_VEL_LIMIT : float = 10.0             # Default: 10.0
+const MAX_PLAT_STICK_VEL : float = 5.0        # Default: 5.0
+	# If the vertical platform velocity exceeds this amount, it will be lerped.
+const GET_PUSHED_BY_RB_FACTOR : float = 0.7   # Default: 0.5
 
 
 #############
@@ -75,7 +78,7 @@ var last_rigid_body_collision : KinematicCollision3D
 
 var is_jumping : bool = false
 
-#var linear_velocity := Vector3.ZERO
+var linear_velocity := Vector3.ZERO
 
 
 #############
@@ -308,14 +311,15 @@ func is_on_floor() -> bool :
 	return false
 
 
-func get_floor_normal() -> Vector3 :
+func check_if_distance_to_floor(distance : float) -> bool :
 	var col : KinematicCollision3D
-	var floor_normal := Vector3.ZERO
+	var down := Vector3.DOWN * distance
 	
-	col = move_and_collide(Vector3.DOWN * CHECK_FLOOR_DISTANCE, true, SAFE_MARGIN, true)
-	if col : floor_normal = col.get_normal()
+	col = move_and_collide(down, true, SAFE_MARGIN, true)
 	
-	return floor_normal
+	if col : return true
+	
+	return false
 
 
 func snap_to_floor(snap_distance : float) -> void :
@@ -359,17 +363,49 @@ func set_platform_velocity() -> void :
 		var pos : Vector3 = global_position - platform_collider.global_position
 		
 		var plat_vel_goal : Vector3 = platform_body_state.get_velocity_at_local_position(pos)
-		
-		platform_velocity.x = plat_vel_goal.x
-		platform_velocity.z = plat_vel_goal.z
-		
-		# The vertical component is lerped to allow platforms to launch the player up
-		var weight : float = ground_lerp_speed * get_physics_process_delta_time()
-		platform_velocity.y = lerpf(platform_velocity.y,plat_vel_goal.y, weight)
-		
-	else : platform_velocity = Vector3.ZERO
+			
+		if absf(platform_velocity.length()) < MAX_PLAT_STICK_VEL :
+			platform_velocity = plat_vel_goal
+			
+		else :
+			var weight : float = ground_lerp_speed * get_physics_process_delta_time()
+			platform_velocity = platform_velocity.lerp(plat_vel_goal, weight)
 	
 	return
+
+
+# This method helps the player get unstuck
+# This method also handles bodies pushing the player
+func resolve_collisions() -> void :
+	var trace := Trace.new()
+	
+	for i in range(5) :
+		trace.rest(global_position, collider.shape, self, collision_mask, get_world_3d().direct_space_state)
+		
+		if not trace.hit : return
+		
+		var motion : Vector3 = -trace.normal * SAFE_MARGIN
+		
+		move_and_collide(motion)
+		
+		var body : Object = GAME.get_body_by_rid(trace.rid)
+		
+		var wall_collision : bool = trace.normal[1] < MIN_FLOOR_Y
+		
+		if body is AnimatableBody3D and wall_collision :
+			var dot_p : float = trace.linear_velocity.normalized().dot(trace.normal)
+			
+			# Get pushed
+			impulse_velocity = trace.linear_velocity * dot_p
+			
+		#if body is RigidBody3D :
+			#var rigidbody := body as RigidBody3D
+			#
+			## Get pushed
+			#impulse_velocity = trace.linear_velocity * (rigidbody.mass / kin_mass) * GET_PUSHED_BY_RB_FACTOR
+			#
+			## Apply counter impulse to the rigid body
+			#rigidbody.apply_central_force(-trace.linear_velocity * kin_mass * GET_PUSHED_BY_RB_FACTOR)
 
 
 # The 'move and slide' algorithm in it's most basic form. This method is unused.
@@ -435,7 +471,10 @@ func move_and_slide(motion : Vector3) -> void :
 	
 	raycast.intersect(ray_origin, ray_dest, self, collision_mask, space_state)
 	
-	if is_on_floor() and collided_with_wall and raycast.hit :  # Ledge detected
+	var close_to_floor : bool = check_if_distance_to_floor(STEP_HEIGHT)
+		# This stops jumping into a step from eating the player's momentum
+	
+	if (is_on_floor() or close_to_floor) and collided_with_wall and raycast.hit :  # Ledge detected
 		var ledge_pos : Vector3 = raycast.endpos
 		var feet_pos : Vector3 = get_feet_position()
 		var collision_height : float = ledge_pos.y - feet_pos.y
@@ -563,13 +602,20 @@ func move_and_slide(motion : Vector3) -> void :
 	move_and_slide(motion)
 
 
-func _physics_process(delta : float) -> void :	
+func dash() -> void :
+	if Input.is_action_just_pressed("impulse") :
+		apply_kinematic_impulse(-head.transform.basis.z * 3.0)  # Dash forward
+
+
+func _physics_process(delta : float) -> void :
+	resolve_collisions()
+	
 	var input_dir : Vector3 = get_input_direction()
 	
 	speed = run_speed
 	
-	if Input.is_action_just_pressed("impulse") :
-		apply_kinematic_impulse(-head.transform.basis.z * 3.0)  # Dash forward
+	# Special move go here
+	dash()  # This is for testing impulse
 	
 	set_initial_velocity(input_dir, delta)  # Jump impulse is also applied here
 	
@@ -591,7 +637,6 @@ func _physics_process(delta : float) -> void :
 	
 	# Kinematic physics interaction
 	apply_push_impulse_to_objects(last_rigid_body_collision)
-	
 	apply_weight_force_to_objects()
 
 

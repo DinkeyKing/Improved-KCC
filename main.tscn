@@ -1295,5 +1295,8 @@ transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 7.0292
 [node name="MovingPlatform13" parent="." instance=ExtResource("10_pgdae")]
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 7.02923, 3.55182, 11.2194)
 
+[node name="MovingPlatform15" parent="." instance=ExtResource("10_pgdae")]
+transform = Transform3D(1, 0, 0, 0, 0.707107, -0.707107, 0, 0.707107, 0.707107, 11.2438, 1.05618, 11.9188)
+
 [node name="MovingPlatform12" parent="." instance=ExtResource("10_pgdae")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.18987, 10.1922)

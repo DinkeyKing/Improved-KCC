@@ -14,3 +14,10 @@ func _process(_delta : float) -> void:
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		else :
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+func get_body_by_rid(rid : RID) -> Object :
+	var body_id : int = PhysicsServer3D.body_get_object_instance_id(rid)
+	var body : Object = instance_from_id(body_id)
+	
+	return body
