@@ -22,13 +22,6 @@ The built in character controller is good for quick prototyping and for games th
 - I've only tested it on low poly terrains.
 - Kinematic character controllers should use animatable bodies.
 
-### Why do I use a rigid body for a kinematic character?
-
-Rigid bodies are not meant for kinematic movement, but by doing so the 'rigid body to character' interactions are handled by the physics simulation. (An issue involving moving platforms is also solved by this.) Testing showed great results, and I haven't encountered any issues stemming from this. \
-The 'character to rigid body' interactions are still defined by the script, since the characters collide kinematically when moving.
-
-Having realistic 'rigid body to character' interactions while keeping the characters fully kinematic would be preferable, but I haven't found a way to do that yet.
-
 ## Climbing stairs
 
 The stepping problem is not trivial, it can be solved in different ways. 
