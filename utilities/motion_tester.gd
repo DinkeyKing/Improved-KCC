@@ -2,6 +2,13 @@ extends Node3D
 class_name MotionTester
 
 #############
+# CONSTANTS #
+#############
+
+const MAX_COL : int = 4
+
+
+#############
 # VARIABLES #
 #############
 
@@ -25,6 +32,7 @@ func test_motion(body : RID, from : Transform3D, motion : Vector3, margin : floa
 	params.margin = margin
 	params.exclude_bodies = [body]
 	params.recovery_as_collision = rec
+	params.max_collisions = MAX_COL
 	
 	hit = false
 	

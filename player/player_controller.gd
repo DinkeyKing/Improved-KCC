@@ -60,6 +60,7 @@ const RB_VEL_LIMIT : float = 10.0             # Default: 10.0
 const MAX_PLAT_STICK_VEL : float = 5.0        # Default: 5.0
 	# If the vertical platform velocity exceeds this amount, it will be lerped.
 const GET_PUSHED_BY_RB_FACTOR : float = 0.7   # Default: 0.5
+const MAX_DEPEN_ITERATION : int = 4           # Default: 4
 
 
 #############
@@ -77,8 +78,6 @@ var slide_depth : int = 0
 var last_rigid_body_collision : KinematicCollision3D
 
 var is_jumping : bool = false
-
-var linear_velocity := Vector3.ZERO
 
 
 #############
@@ -305,8 +304,8 @@ func is_on_floor() -> bool :
 	
 	# If CHECK_FLOOR_DISTANCE is too small, this won't work.
 	col = move_and_collide(Vector3.DOWN * CHECK_FLOOR_DISTANCE, true, SAFE_MARGIN, true)
-	if col and col.get_normal()[1] > MIN_FLOOR_Y :
-		return true
+	
+	if col and col.get_normal()[1] > MIN_FLOOR_Y : return true
 	
 	return false
 
@@ -315,9 +314,9 @@ func check_if_distance_to_floor(distance : float) -> bool :
 	var col : KinematicCollision3D
 	var down := Vector3.DOWN * distance
 	
-	col = move_and_collide(down, true, SAFE_MARGIN, true)
+	col = move_and_collide(down, true, SAFE_MARGIN)
 	
-	if col : return true
+	if col and col.get_normal()[1] > MIN_FLOOR_Y : return true
 	
 	return false
 
@@ -326,29 +325,33 @@ func snap_to_floor(snap_distance : float) -> void :
 	var down := Vector3.DOWN * snap_distance
 	var motion_tester := MotionTester.new()
 	
-	motion_tester.test_motion(self, global_transform, down, SAFE_MARGIN, true)
+	motion_tester.test_motion(self, global_transform, down, SAFE_MARGIN, false)
 	
 	if motion_tester.hit and motion_tester.normal[1] > MIN_FLOOR_Y :
-		var travel : Vector3 = motion_tester.travel
-		# Remove horizontal component
-		travel.x = 0.0
-		travel.z = 0.0
+		# If the motion we give to the 'move_and_collide' method is too large,
+		# The player will slowly slide down on slopes.
+		# The player has to be moved down the correct amount.
+		
+		var v_travel : Vector3 = motion_tester.travel
+		# Remove horizontal components
+		v_travel.x = 0.0
+		v_travel.z = 0.0
 		
 		# The safe margin has to be large enough when snapping, to avoid any sliding.
-		move_and_collide(travel, false, SNAP_SAFE_MARGIN , true)
+		move_and_collide(v_travel, false, SNAP_SAFE_MARGIN , true)
 
 
 func set_platform_velocity() -> void :
 	var col : KinematicCollision3D
 	
-	col = move_and_collide(Vector3.DOWN * CHECK_FLOOR_DISTANCE, true, SAFE_MARGIN, true, 5)
+	col = get_collision_below()
 	
 	if col and col.get_collider() is RigidBody3D :
 		modify_velocity_on_rigid_bodies(col)
 		return
 	 
 	if not col or not col.get_collider() is AnimatableBody3D :
-		if add_velocity_on_leave  :  # Just left platform
+		if add_velocity_on_leave :  # Just left platform
 			platform_velocity.y = maxf(0.0, platform_velocity.y)  # Make sure it's not negative
 			impulse_velocity += platform_velocity
 			
@@ -358,12 +361,15 @@ func set_platform_velocity() -> void :
 	var platform_collider := col.get_collider() as PhysicsBody3D
 	
 	if col.get_normal()[1] >= MIN_FLOOR_Y :
+		if platform_velocity.is_zero_approx() : impulse_velocity = Vector3.ZERO
+			# This stops the platform applying impulse when stepping off a ledge
+		
 		var platform_body_state := PhysicsServer3D.body_get_direct_state(platform_collider)
 		
 		var pos : Vector3 = global_position - platform_collider.global_position
 		
 		var plat_vel_goal : Vector3 = platform_body_state.get_velocity_at_local_position(pos)
-			
+		
 		if absf(platform_velocity.length()) < MAX_PLAT_STICK_VEL :
 			platform_velocity = plat_vel_goal
 			
@@ -374,38 +380,47 @@ func set_platform_velocity() -> void :
 	return
 
 
-# This method helps the player get unstuck
-# This method also handles bodies pushing the player
-func resolve_collisions() -> void :
+# This needs to happen at the beginning of every physics frame.
+func do_depenetration() -> void :
 	var trace := Trace.new()
+	var direct_space_state : PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
 	
-	for i in range(5) :
-		trace.rest(global_position, collider.shape, self, collision_mask, get_world_3d().direct_space_state)
+	for i in range(MAX_DEPEN_ITERATION) :
+		trace.rest(global_position, collider.shape, self, collision_mask, direct_space_state)
 		
 		if not trace.hit : return
 		
-		var motion : Vector3 = -trace.normal * SAFE_MARGIN
+		# The direction should be the inverted normal, so further collision checks can be made
+		var depen_motion : Vector3 = -trace.normal * SAFE_MARGIN
 		
-		move_and_collide(motion)
-		
-		var body : Object = GAME.get_body_by_rid(trace.rid)
-		
-		var wall_collision : bool = trace.normal[1] < MIN_FLOOR_Y
+		move_and_collide(depen_motion)
+
+
+func set_velocity_on_moving_walls() -> void :
+	var motion_tester := MotionTester.new()
+	
+	motion_tester.test_motion(self, global_transform, Vector3.ZERO, SAFE_MARGIN, true)
+	
+	if not motion_tester.hit : return
+	
+	var res : PhysicsTestMotionResult3D = motion_tester.res
+	
+	var push_vel := Vector3.ZERO
+	
+	for i in range(res.get_collision_count()) :
+		var collision_normal : Vector3 = res.get_collision_normal(i)
+		var body : Object = res.get_collider(i)
+		var wall_collision : bool = collision_normal[1] < MIN_FLOOR_Y
 		
 		if body is AnimatableBody3D and wall_collision :
-			var dot_p : float = trace.linear_velocity.normalized().dot(trace.normal)
+			var collider_velocity : Vector3 = res.get_collider_velocity(i)
+			var dot_p : float = collider_velocity.normalized().dot(collision_normal)
 			
-			# Get pushed
-			impulse_velocity = trace.linear_velocity * dot_p
-			
-		#if body is RigidBody3D :
-			#var rigidbody := body as RigidBody3D
-			#
-			## Get pushed
-			#impulse_velocity = trace.linear_velocity * (rigidbody.mass / kin_mass) * GET_PUSHED_BY_RB_FACTOR
-			#
-			## Apply counter impulse to the rigid body
-			#rigidbody.apply_central_force(-trace.linear_velocity * kin_mass * GET_PUSHED_BY_RB_FACTOR)
+			push_vel += collider_velocity * dot_p
+	
+	if not push_vel.is_zero_approx() :
+		var weight : float = ground_lerp_speed * get_physics_process_delta_time()
+		impulse_velocity = impulse_velocity.lerp(push_vel, weight) 
 
 
 # The 'move and slide' algorithm in it's most basic form. This method is unused.
@@ -429,7 +444,7 @@ func move_and_slide_basic(motion : Vector3) -> void :
 	move_and_slide_basic(motion)
 
 
-func move_and_slide(motion : Vector3) -> void :
+func move_and_slide(motion : Vector3, _platform_motion := Vector3.ZERO) -> void :
 	var col : KinematicCollision3D
 	
 	# Commit to move
@@ -474,7 +489,7 @@ func move_and_slide(motion : Vector3) -> void :
 	var close_to_floor : bool = check_if_distance_to_floor(STEP_HEIGHT)
 		# This stops jumping into a step from eating the player's momentum
 	
-	if (is_on_floor() or close_to_floor) and collided_with_wall and raycast.hit :  # Ledge detected
+	if close_to_floor and collided_with_wall and raycast.hit :  # Ledge detected
 		var ledge_pos : Vector3 = raycast.endpos
 		var feet_pos : Vector3 = get_feet_position()
 		var collision_height : float = ledge_pos.y - feet_pos.y
@@ -482,7 +497,11 @@ func move_and_slide(motion : Vector3) -> void :
 		if collision_height > 0.0 and collision_height <= STEP_HEIGHT :
 			# Check if surface can be stepped on, by estimating the step position
 			var up := Vector3.UP * collision_height
-			var motion_dir : Vector3 = remaining_motion.normalized()
+			
+			# We need only the horizontal component of the remaining motion
+			var h_remaining_motion := Vector3(remaining_motion.x, 0.0, remaining_motion.z)
+			var h_motion_dir : Vector3 = h_remaining_motion.normalized()
+			
 			var motion_tester := MotionTester.new()
 			
 			# UP
@@ -494,15 +513,17 @@ func move_and_slide(motion : Vector3) -> void :
 			test_transform.origin = motion_tester.endpos
 			# It's important to extend the forward motion by some amount! 
 			# (Because near ledges the reported normal is often incorrect.)
-			var forward : Vector3 = remaining_motion + motion_dir * 0.1  # <- Magic number :(
+			var forward : Vector3 = h_remaining_motion + h_motion_dir * 0.1  # <- Magic number :(
 			motion_tester.test_motion(self, test_transform, forward, SAFE_MARGIN, false)
 			
 			# SLIDE (if needed)
-			for i in range(3) :
+			for i in range(MAX_SLIDES) :
 				if motion_tester.hit and motion_tester.normal[1] < MIN_FLOOR_Y :
 					test_transform.origin = motion_tester.endpos
 					var slide_motion : Vector3 = motion_tester.remainder.slide(motion_tester.normal)
 					motion_tester.test_motion(self, test_transform, slide_motion, SAFE_MARGIN, false)
+					
+				else : break
 			
 			# DOWN
 			test_transform.origin = motion_tester.endpos
@@ -514,9 +535,8 @@ func move_and_slide(motion : Vector3) -> void :
 				
 				# The motion is extended by the collision shape's margin to make sure
 				# the step is fully stepped, so as not to fall down at lower velocities.
-				# The motion is aslo extended by the platform motion to avoid falling back
-				# after stepping on moving platforms.
-				motion = remaining_motion + motion_dir * COLLISION_SHAPE_MARGIN
+				motion = remaining_motion + h_motion_dir * COLLISION_SHAPE_MARGIN
+				motion.y = maxf(0.0, motion.y)
 				
 				# Iterate
 				slide_depth += 1
@@ -574,7 +594,7 @@ func move_and_slide(motion : Vector3) -> void :
 	v_motion.y = remaining_motion.y
 	
 	if collided_with_floor :
-		floor_impact_velocity = velocity + impulse_velocity + linear_velocity  # Store impact velocity.
+		floor_impact_velocity = velocity + impulse_velocity  # Store impact velocity.
 		# (Fall damage could be applied here.)
 		
 		# These help to stop sliding on slope
@@ -608,18 +628,20 @@ func dash() -> void :
 
 
 func _physics_process(delta : float) -> void :
-	resolve_collisions()
+	do_depenetration()
 	
 	var input_dir : Vector3 = get_input_direction()
 	
 	speed = run_speed
 	
-	# Special move go here
+	# Special moves go here
 	dash()  # This is for testing impulse
 	
 	set_initial_velocity(input_dir, delta)  # Jump impulse is also applied here
 	
+	# Moving body interactions
 	set_platform_velocity()
+	if platform_velocity.is_zero_approx() : set_velocity_on_moving_walls()
 	
 	# Do the 'move and slide'
 	var movement_motion : Vector3 = velocity * delta
@@ -635,21 +657,6 @@ func _physics_process(delta : float) -> void :
 	# The real move velocity is the modified velocity. For things like camera tilt.
 	real_move_velocity = velocity
 	
-	# Kinematic physics interaction
+	# Kinematic physics interaction	
 	apply_push_impulse_to_objects(last_rigid_body_collision)
 	apply_weight_force_to_objects()
-
-
-# Physics state control
-func _integrate_forces(state : PhysicsDirectBodyState3D) -> void :
-	if state.linear_velocity == Vector3.ZERO : return
-	
-	if is_on_floor() :
-		state.linear_velocity.y = maxf(0.0, state.linear_velocity.y)
-		
-		if platform_velocity.is_zero_approx() :  # Not on a moving platform
-			# Apply friction
-			var weight : float = state.step * impulse_lerp_speed
-			state.linear_velocity = state.linear_velocity.lerp(Vector3.ZERO, weight)
-			
-		else  : state.linear_velocity = Vector3.ZERO

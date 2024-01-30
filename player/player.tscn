@@ -4,15 +4,16 @@
 [ext_resource type="Script" path="res://player/camera_controller.gd" id="2_gif5g"]
 [ext_resource type="Script" path="res://utilities/input_buffer.gd" id="3_smg7c"]
 
-[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_tlqtl"]
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_sd4d8"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_8jejx"]
 
 [node name="Player" type="AnimatableBody3D"]
+input_ray_pickable = false
 axis_lock_angular_x = true
 axis_lock_angular_y = true
 axis_lock_angular_z = true
-physics_material_override = SubResource("PhysicsMaterial_tlqtl")
+physics_material_override = SubResource("PhysicsMaterial_sd4d8")
 sync_to_physics = false
 script = ExtResource("1_l0d0d")
 
