@@ -2,7 +2,18 @@
 This project showcases how a custom kinematic character controller (with stair stepping, moving platforms and physics) can be made in Godot. \
 (Because not using CharacterBody3D can provide various advantages.)
 
-Does not work with Godot Physics!!! Use the Godot Jolt plugin!!!
+Does not work with Godot Physics!!! Use the Godot Jolt plugin!!! (This  will change most likely, see below.)
+
+## Current status and issues (!!!)
+### Controller status
+Still a work in progress with many issues to adress. The current files are outdated, I will update the project once I resolve most issues, and achieve my desired character controller behaviour.
+
+### Physics Engine Differences
+I've decided to give Godot Physics a try, and I've found that it behaves a lot differently than Jolt in terms of collision reporting. A lot of issues and strange behaviours I've enccountered during the creation of my character controller only appear when using Godot Jolt, which resulted in a lot of workarounds in the script, making the code more complicated than needed. Godot Physics overall seems to work better for getting the required collision infos, so despite it's inaccuracies, performance issues and other shortcomings, I will be using that for now, without ensuring that the controller script will function properly when used with Jolt.
+
+### Usable Shapes
+I don't plan dealing with capsule shapes, so they may not work properly. This means the best shape to use when using Godot Physics is the box shape, since cylinder shapes are not well implemented there.
+
 
 ## Motivaton
 
