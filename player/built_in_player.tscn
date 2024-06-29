@@ -4,7 +4,9 @@
 [ext_resource type="Script" path="res://utilities/input_buffer.gd" id="1_p4g84"]
 [ext_resource type="Script" path="res://player/camera_controller.gd" id="2_0orvi"]
 
-[sub_resource type="CylinderShape3D" id="CylinderShape3D_2x71h"]
+[sub_resource type="BoxShape3D" id="BoxShape3D_6juc0"]
+margin = 0.0
+size = Vector3(1, 2, 1)
 
 [node name="BuiltInPlayer" type="CharacterBody3D"]
 wall_min_slide_angle = 0.0
@@ -14,7 +16,7 @@ script = ExtResource("1_ebx0x")
 jump_impulse_length = 10.0
 
 [node name="CollisionShape" type="CollisionShape3D" parent="."]
-shape = SubResource("CylinderShape3D_2x71h")
+shape = SubResource("BoxShape3D_6juc0")
 
 [node name="PivotY" type="Node3D" parent="."]
 script = ExtResource("2_0orvi")

@@ -4,8 +4,9 @@
 [ext_resource type="Script" path="res://player/camera_controller.gd" id="2_k7urt"]
 [ext_resource type="Script" path="res://utilities/input_buffer.gd" id="3_xm4mr"]
 
-[sub_resource type="CylinderShape3D" id="CylinderShape3D_ua7wd"]
+[sub_resource type="BoxShape3D" id="BoxShape3D_h6c1x"]
 margin = 0.0
+size = Vector3(1, 2, 1)
 
 [sub_resource type="LabelSettings" id="LabelSettings_l3nv4"]
 font_size = 32
@@ -25,7 +26,7 @@ script = ExtResource("1_k76p5")
 collider = NodePath("CollisionShape")
 
 [node name="CollisionShape" type="CollisionShape3D" parent="."]
-shape = SubResource("CylinderShape3D_ua7wd")
+shape = SubResource("BoxShape3D_h6c1x")
 
 [node name="PivotY" type="Node3D" parent="."]
 top_level = true
