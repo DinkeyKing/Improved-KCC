@@ -1,0 +1,32 @@
+[gd_scene load_steps=5 format=3 uid="uid://c3xgmjvs8u0ff"]
+
+[ext_resource type="Script" path="res://player/built_in_controller.gd" id="1_ebx0x"]
+[ext_resource type="Script" path="res://utilities/input_buffer.gd" id="1_p4g84"]
+[ext_resource type="Script" path="res://player/camera_controller.gd" id="2_0orvi"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_2x71h"]
+
+[node name="BuiltInPlayer" type="CharacterBody3D"]
+wall_min_slide_angle = 0.0
+floor_snap_length = 0.26
+safe_margin = 0.002
+script = ExtResource("1_ebx0x")
+jump_impulse_length = 10.0
+
+[node name="CollisionShape" type="CollisionShape3D" parent="."]
+shape = SubResource("CylinderShape3D_2x71h")
+
+[node name="PivotY" type="Node3D" parent="."]
+script = ExtResource("2_0orvi")
+
+[node name="PivotX" type="Node3D" parent="PivotY"]
+
+[node name="PivotZ" type="Node3D" parent="PivotY/PivotX"]
+
+[node name="Camera3D" type="Camera3D" parent="PivotY/PivotX/PivotZ"]
+fov = 90.0
+
+[node name="JumpInputBuffer" type="Node" parent="."]
+script = ExtResource("1_p4g84")
+input_name = "jump"
+buffer_window = 3

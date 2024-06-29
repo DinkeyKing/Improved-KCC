@@ -29,3 +29,6 @@ maps/
 
 # Recordings
 *.avi
+
+# Other
+*.tmp

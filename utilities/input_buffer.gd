@@ -5,7 +5,7 @@ class_name InputBuffer
 # PROPERTIES #
 ##############
 
-@export var input_name : String = ""
+@export var input_name    : String = ""
 @export var buffer_window : int = 1
 
 #############

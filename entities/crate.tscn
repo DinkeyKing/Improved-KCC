@@ -1,14 +1,15 @@
-[gd_scene load_steps=4 format=3 uid="uid://cbi8m4gcyg3yy"]
+[gd_scene load_steps=5 format=3 uid="uid://cbi8m4gcyg3yy"]
 
+[ext_resource type="Script" path="res://entities/prop_control.gd" id="1_ay3xk"]
 [ext_resource type="PackedScene" uid="uid://b5a7luq6vo36j" path="res://models/wooden_crate1.glb" id="1_idrbo"]
 
-[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_5prpy"]
-friction = 0.8
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_6pk8p"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_3lbfb"]
 
 [node name="Crate" type="RigidBody3D"]
-physics_material_override = SubResource("PhysicsMaterial_5prpy")
+physics_material_override = SubResource("PhysicsMaterial_6pk8p")
+script = ExtResource("1_ay3xk")
 
 [node name="wooden_crate1" parent="." instance=ExtResource("1_idrbo")]
 
