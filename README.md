@@ -18,7 +18,7 @@ are also a few of issues with it I wanted to fix.
 - Removed logic that causes the character to halt when colliding with multiple walls with ```floor_block_on_wall``` turned on.
 - Fixed sliding up "wall floor supports" due to recovery when ```floor_block_on_wall``` is on.
 
-### Improvments
+### Improvements
 - Walls can now cancel out to ceiling, similar to how they can cancel out to floor.
 - Floor snap safe margin can be set seperately from the safe margin used for slide collisions.
 
