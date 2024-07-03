@@ -3,6 +3,8 @@
 The IKCC class implements an easy to use interface for handling complex 'move and slide' collision responses (character physics) for Godot's 3D character bodies. Features include stair stepping and special interactions with kinematic bodies (moving floors, -walls, and -ceilings) and dynamic rigid bodies.
 It aims to extend and improve upon the collision response provided by the engine (https://github.com/godotengine/godot/blob/master/scene/3d/physics/character_body_3d.cpp).
 
+I highly recommend using the Godot Jolt addon to make collision checks more accurate and bug-free, and to make cylinder shapes work! https://github.com/godot-jolt/godot-jolt
+
 Demo project includes example controllers and a test environment.
 
 ## Motivation
@@ -36,6 +38,7 @@ are also a few of issues with it I wanted to fix.
 when ```motion_mode``` is set to ```MotionMode.FLOATING```, or when ```floor_block_on_wall``` is false. I can't think of a reason why I wouldn't modify the velocity on a wall.
 
 ## How to use
+- Optional, but recommended: set 3D physics engine implementation to Godot Jolt. (https://github.com/godot-jolt/godot-jolt)
 - Place 'ikcc.gd' somewhere in your project folder ('addons' folder for example).
 - Your character controller scripts should be attached to ```CharacterBody3D``` nodes, like normal.
 - In your script, instead of extending ```CharacterBody3D```, extend the ```IKCC``` class.
