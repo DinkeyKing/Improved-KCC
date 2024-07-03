@@ -1,7 +1,6 @@
 # Improved Kinematic Character Controller
 
-The IKCC class implements an easy to use interface for handling complex 'move and slide' collision responses (character physics) for Godot's 3D character bodies. Features include climbing steps and other low geometry,  and special interactions with kinematic bodies (moving floors, -walls, and -ceilings) and dynamic rigid bodies.
-It aims to extend and improve upon the collision response provided by the engine (https://github.com/godotengine/godot/blob/master/scene/3d/physics/character_body_3d.cpp).
+The IKCC class functions as a replacement for ```CharacterBody3D```'s ```move_and_slide``` collision response. It implements all of it's features with some changes and improvements, and provides new ones, while keeping the easy to use interface. New features include climbing steps and other low geometry, and special interactions with kinematic bodies (moving floors, -walls, and -ceilings) and dynamic rigid bodies.
 
 I highly recommend using the Godot Jolt addon to make collision checks more accurate and bug-free, and to make cylinder shapes work! https://github.com/godot-jolt/godot-jolt
 
