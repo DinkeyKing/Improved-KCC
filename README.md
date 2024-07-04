@@ -6,6 +6,9 @@ I highly recommend using the Godot Jolt addon to make collision checks more accu
 
 Demo project includes example controllers and a test environment.
 
+## Current status
+Not yet fully complete. I'm still working towards a release version.
+
 ## Motivation
 
 - I wanted to have features for my characters' collision response that are not provided by the built in ```move_and_slide``` function (step climbing for example). There
