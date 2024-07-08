@@ -24,10 +24,29 @@ const WALL_VERTICAL_APPROX_CMP  : float = 0.01     # Default: 0.01
 # INFO RECOVERY_FACTOR : The amount of recovery can be more than the safe margin,
 # so that has to be accounted for.
 
-enum MotionMode          {GROUNDED, FLOATING}
-enum PlatformLeaveAction {DO_NOTHING, ADD_VELOCITY, ADD_VELOCITY_NO_DOWNWARDS}
-enum FloorConstantSpeed  {DISABLED, ENABLED}
-enum FloorType           {NONE, COLLISION, SURFACE}
+## Different modes for sliding collision response.
+enum MotionMode {
+	## Suitable for characters that move on the ground.
+	GROUNDED,
+	## Suitable for flying or swimming movement.
+	FLOATING
+}
+
+## Defines how to modify the velocity when leaving a moving platform.
+enum PlatformLeaveAction {
+	## Does nothing when leaving a platform.
+	DO_NOTHING,
+	## Adds the last platform velocity to [member velocity] when leaving a platform.
+	ADD_VELOCITY,
+	## Adds the last platform velocity without the downward component to [member velocity].
+	ADD_VELOCITY_NO_DOWNWARDS
+}
+
+enum FloorType {
+	NONE,
+	COLLISION,
+	SURFACE
+}
 
 
 
@@ -38,7 +57,11 @@ enum FloorType           {NONE, COLLISION, SURFACE}
 # --------------
 
 
-@export var motion_mode           := MotionMode.GROUNDED
+## Sets the motion mode which defines the behavior of [method move_and_slide]. 
+## See [enum MotionMode] constants for available modes.
+@export var motion_mode := MotionMode.GROUNDED
+## Vector pointing upwards, used to determine what is a wall and what is a floor (or a ceiling)
+## when calling [method move_and_slide].
 @export var up_direction : Vector3 = Vector3.UP :
 	set(value) : up_direction = value.normalized()
 
@@ -47,19 +70,35 @@ enum FloorType           {NONE, COLLISION, SURFACE}
 @export var collider : CollisionShape3D
 
 @export_group("Floor")
+## If [code]true[/code], the body will be able to move on the floor only.
+## This option avoids to be able to walk on walls, it will however allow to slide down along them.
 @export var floor_block_on_wall : bool = true
+## If [code]false[/code], the [member velocity] will slide on the floor, instead of fully removing vertical velocity.
+## This is useful for slippery slopes.
 @export var floor_stop_on_slope : bool = true
-@export var floor_constant_speed := FloorConstantSpeed.DISABLED
+## If [code]true[/code], the body will move at a constant speed on floors, regardless of the slope. [br]
+## If [code]false[/code], the motion will slide on the floor, resulting in decreased speed,
+## and when going down slopes, snapping will cause an increased speed.
+@export var floor_constant_speed : bool = false
+## Sets a maximum snapping distance. When set to a value different from [code]0.0[/code], the body is kept attached to
+## slopes when calling [method move_and_slide]. The snapping vector is determined by the given distance
+## along the opposite direction of the [member up_direction].
 @export var max_snap_length : float = 0.26 :
 	set(value) : max_snap_length = absf(value)
-@export_range(0.0, 180.0, 0.1, "degrees") 
+## Maximum angle where a slope is still considered a floor (or a ceiling), rather than a wall.
+@export_range(0.0, 180.0, 0.1, "degrees")
 var _floor_max_angle : float = 45.0 :
 	set (value) : 
 		floor_max_angle = value * (PI/180.0)  # Set radian variable
 		_floor_max_angle = value  # Set degree variable
 
 @export_group("Wall")
+## If [code]true[/code], the [member velocity] will slide on walls, if the horizontal component is
+## looking away from the wall. This only matters when [member floor_block_on_wall] is [code]true[/code].
 @export var wall_slide_vertical_only_collision : bool = false
+## If the angle of a wall collision is smaller than this angle, the body will stop
+## instead of sliding. When [enum MotionMode] is set to [code]MotionMode.GROUNDED[/code], only the horizontal movement is affected.
+## If [member floor_block_on_wall] is [code]false[/code], this only affects collisions with fully vertical walls.
 @export_range(0.0, 180.0, 0.1, "degrees") 
 var _wall_min_slide_angle : float = 15.0 :
 	set (value) : 
@@ -67,46 +106,95 @@ var _wall_min_slide_angle : float = 15.0 :
 		_wall_min_slide_angle = value  # Set degree variable
 
 @export_group("Ceiling")
+## If [code]false[/code], upwards [member velocity] and motion will be removed before sliding on
+## ceilings.
 @export var slide_on_ceiling : bool = true
 
 @export_group("Moving Obstacles")
+## If [code]true[/code], the applied motion from the platform velocity will also follow the sliding behaviour,
+## instead of stopping on collisions.
 @export var slide_platform_motion : bool = true
+## Sets the behavior to apply when you leave a moving platform. By default, to be physically accurate,
+## when you leave the last platform velocity is applied. See [enum PlatformLeaveAction] constants for available behavior.
 @export var platform_leave_action := PlatformLeaveAction.ADD_VELOCITY
+## Collision layers that will be included for detecting floor bodies that will act as moving platforms
+## to be followed by the body.
 @export_flags_3d_physics var moving_platform_layers : int = 1
-@export_flags_3d_physics var moving_wall_layers : int = 1
+## Collision layers that will be included for detecting wall and ceiling bodies that will 
+## accelarate the body.
+@export_flags_3d_physics var moving_wall_and_ceiling_layers : int = 1
+## The character detaches from a moving platform, if the platform suddenly changes speed in the
+## opposite direction of it's movement vertical to it's surface, and the change in speed is larger
+## than this threshold.
 @export_range(0.01, 100, 0.01, "suffix:m/s") var platform_vertical_detach_threshold : float = 1.0 :
 	set(value) : platform_vertical_detach_threshold = maxf(0.0, value)
 
 @export_group("Stepping")
+## If [code]true[/code], the character can climb all kinds low geometry with floor surfaces, not just steps.
 @export var use_surface_normals : bool = false
+## Sets the maximum height of the steps (and other low obstacles) the character can climb.
 @export_range(0.01, 256.0, 0.01, "suffix:m") var max_step_height : float = 0.26 :
 	set(value) : max_step_height = absf(value)
 
 @export_group("Rigid Body Interactions")
+## If [code]false[/code], rigid bodies collisions will be treated as collisions with static bodies. [br]
+## If [code]true[/code], contact impulses and weight force will be simulated when colliding with
+## rigid bodies. In this case, it's important that the collision mask of the rigid bodies that
+## will be interacted with has the character's collision layer excluded!
 @export var interact_with_rigid_bodies : bool = true
+## The gravity acceleration used when applying a weight force.
+## The default value is read from the project settings.
 @export_range(0.0, 100, 0.01, "suffix:m/s^2") var gravity_acceleration : float = ProjectSettings.get_setting("physics/3d/default_gravity") :
 	set(value) : gravity_acceleration = absf(value)
+## The mass of the character body.
 @export_range(0.001, 1000.0, 0.001, "suffix:kg") var mass : float = 1.0 :
 	set(value) : 
 		mass = maxf(CMP_EPSILON, value)
 		inverse_mass = 1.0 / mass
-@export var physics_material_bounce: float = 0.0 :
+## The body's bounciness (only applies to rigid body collisions). Values range from 0 (no bounce) to 1 (full bounciness).
+@export_range(0.0, 1.0, 0.01) var physics_material_bounce: float = 0.0 :
 	set(value) : physics_material_bounce = clampf(value, 0.0, 1.0)
-@export var rigid_body_platform_central_impulse_threshold : float = 0.2 :
+## If the character's horizontal distance from the rigid body platform's centre of mass is less than
+## this threshold, the applied impulse will always be central, meaning no tourqe is applied.
+@export_range(0.0, 64, 0.01, "suffix:m") var rigid_body_platform_central_impulse_threshold : float = 0.2 :
 	set(value) : rigid_body_platform_central_impulse_threshold = absf(value)
+## The fraction of the tourqe to be eliminated from the impulses applied to the rigid body platform,
+## when the resulting velocity from the collision impulse points upwards. [br]
+## This is used to get rid of the excessive rotations caused by the estimated impulses.
 @export_range(0.0, 1.0, 0.01) var rigid_body_platform_counter_torque_factor : float = 0.75 :
 	set(value) : rigid_body_platform_counter_torque_factor = clampf(value, 0.0, 1.0)
-@export var rigid_body_platform_horizontal_stick_threshold : float = 4.0 :
+## If the length difference between the previously picked up horizontal (friction) platform velocity
+## and the current platform's horizontal velocity exceeds this threshold, the horizontzal platform
+## velocity will be interpolated instead of directly picked up. [br]
+## This useful for stopping excessive amounts of accelarations on rigid bodies. [br]
+## (Horizontal means horizontal relative to the platform surface.)
+@export_range(0.0, 64, 0.01, "suffix:m/s") var rigid_body_platform_horizontal_stick_threshold : float = 4.0 :
 	set(value) : rigid_body_platform_horizontal_stick_threshold = absf(value)
+## How fast to interpolate the friction component of the platform velocity to the actual velocity of the platform,
+## when the [member rigid_body_platform_horizontal_stick_threshold] is exceeded. Note that the physics
+## material of the rigid body also affects the interpolation speed.
 @export var rigid_body_platform_friction_strength : float = 1.0 :
 	set(value) : rigid_body_platform_friction_strength = absf(value)
+## If the length difference between the previously picked up vertical platform velocity
+## and the current platform's vertical velocity exceeds this threshold, the previous vertical
+## component is kept, meaning the character no longer sticks to the rigid body. [br]
+## (Vertical means vertical relative to the platform surface.)
 @export_range(0.01, 100, 0.01, "suffix:m/s") var rigid_body_platform_vertical_stick_threshold : float = 1.0 :
 	set(value) : rigid_body_platform_vertical_stick_threshold = absf(value)
 
 @export_group("Collision")
+## Extra margin used for recovery and during slide collisons. [br] [br]
+## If the body is at least this close to another body, it will consider them to be colliding 
+## and will be pushed away before performing the actual motion. [br]
+## A higher value means it's more flexible for detecting collision, which helps with consistently
+## detecting walls and floors. [br]
+## A lower value forces the collision algorithm to use more exact detection, so it can be used in
+## cases that specifically require precision, e.g at very low scale to avoid visible jittering,
+## or for stability with a stack of character bodies
 @export_range(0.001, 256.0, 0.001, "suffix:m") var safe_margin : float = 0.001 :
 	set(value) : safe_margin = absf(value)
-@export_range(0.001, 256.0, 0.001, "suffix:m") var snap_safe_margin : float = 0.002 :
+## Extra margin used for recovery when snapping to the floor.
+@export_range(0.001, 256.0, 0.001, "suffix:m") var snap_safe_margin : float = 0.001 :
 	set(value) : snap_safe_margin = absf(value)
 
 
@@ -366,11 +454,10 @@ func grounded_move(p_delta_t : float) -> void :
 				platform_velocity = platform_velocity.slide(prev_floor_normal) + prev_platform_velocity.dot(prev_floor_normal) * prev_floor_normal
 		
 		# FIXME : Because only one floor collider is taken into account,
-		# the transition between a floor with constant velocity and a floor with no
-		# constant velocity can be jittery.
+		# the transition between two floors with velocity can be jittery.
 		# To solve this, one needs to be definetively selected over the other, or their
 		# velocity need to be summed some way.
-		# Alternatively, the floor with constant velocity (the conveyor belt) can be raised
+		# Alternatively, one of the floors can be raised
 		# (or lowered) a little to get around this issue.
 	
 	# Take axis lock into account for platform velocity
@@ -449,8 +536,8 @@ func grounded_move(p_delta_t : float) -> void :
 	
 	# Snap logic
 	var velocity_dot_up            : float = velocity.dot(up_direction)
-	var vel_dir_facing_up          : bool = velocity_dot_up > 0.0
-	var platform_vel_dir_facing_up : bool = platform_velocity.dot(up_direction) > 0.0
+	var vel_dir_facing_up          : bool = velocity_dot_up > CMP_EPSILON
+	var platform_vel_dir_facing_up : bool = platform_velocity.dot(up_direction) > CMP_EPSILON
 	
 	# Snap on platform if platform velocity is larger towards towards floor normal
 	var snap_on_platform : bool = false
@@ -621,7 +708,7 @@ func add_wall_and_ceiling_push_velocity() -> void :
 			if wall_collider_object is StaticBody3D or wall_collider_object is AnimatableBody3D :
 				var wall_collider := wall_collider_object as PhysicsBody3D
 				var wall_rid : RID = wall_collider.get_rid()
-				var excluded : bool = (moving_wall_layers & PhysicsServer3D.body_get_collision_layer(wall_rid)) == 0
+				var excluded : bool = (moving_wall_and_ceiling_layers & PhysicsServer3D.body_get_collision_layer(wall_rid)) == 0
 				
 				if wall_rid.is_valid() and not excluded:
 					var wall_body_state : PhysicsDirectBodyState3D = PhysicsServer3D.body_get_direct_state(wall_rid)
@@ -631,11 +718,12 @@ func add_wall_and_ceiling_push_velocity() -> void :
 						var wall_normal    : Vector3 = collider_data.collision_normal
 						
 						# Skip if wall normal is not facing the wall's velocity or wall velocity is zero
-						if wall_velocity.is_zero_approx() or wall_velocity.dot(wall_normal) <= 0.0 :
+						var wall_velocity_dot_normal : float = wall_velocity.dot(wall_normal)
+						if wall_velocity.is_zero_approx() or wall_velocity_dot_normal < 0.0 :
 							continue
 						
 						# Apply less velocity, the less the wall is facing it's velocity
-						wall_push_velocity += wall_velocity * wall_velocity.normalized().dot(wall_normal)
+						wall_push_velocity += wall_velocity_dot_normal * wall_normal
 	
 	# Modify velocity wall push velocity
 	if not wall_push_velocity.is_zero_approx() :
@@ -753,7 +841,7 @@ func move_and_slide_grounded(p_motion : Vector3, p_platform_pass : bool = false)
 	if not collided :
 		# Apply constant speed when moving down slope, if needed
 		var _new_motion : Vector3
-		if not floor_constant_speed == FloorConstantSpeed.DISABLED and slide_count == 0 and on_floor_if_snapped(velocity.dot(up_direction) > 0.0) :
+		if floor_constant_speed and slide_count == 0 and on_floor_if_snapped(velocity.dot(up_direction) > 0.0) :
 			var _travel : Vector3 = m_result.get_meta("travel") if m_result.has_meta("travel") else m_result.get_travel()
 			var motion_slide_norm : Vector3 = up_direction.cross(p_motion).cross(prev_floor_normal).normalized()
 			
@@ -1004,15 +1092,14 @@ func move_and_slide_grounded(p_motion : Vector3, p_platform_pass : bool = false)
 		var collided_with_rigidbody : bool = interact_with_rigid_bodies and m_result.get_collider(result_state.deepest_ceiling_index) is RigidBody3D
 		var slide_velocity : bool = not p_platform_pass and velocity.dot(result_state.ceiling_normal) < 0.0 and not collided_with_rigidbody
 		
-		if velocity_facing_up :
-			if slide_on_ceiling :
-				if slide_velocity : velocity = velocity.slide(result_state.ceiling_normal)
-			else :
-				if slide_velocity : velocity = velocity.slide(up_direction)
-				new_motion = new_motion.slide(up_direction)
-				apply_default_sliding = false
-		else :
+		if slide_on_ceiling or not velocity_facing_up :
 			if slide_velocity : velocity = velocity.slide(result_state.ceiling_normal)
+		else :
+			# Remove vertical component first, than slide on ceiling
+			if slide_velocity : velocity = velocity.slide(up_direction).slide(result_state.ceiling_normal)
+			new_motion = new_motion.slide(up_direction).slide(result_state.ceiling_normal)
+			apply_default_sliding = false
+	
 	
 	# Return if no motion remains, after handling special cases
 	if new_motion.is_zero_approx() :
@@ -1044,7 +1131,7 @@ func move_and_slide_grounded(p_motion : Vector3, p_platform_pass : bool = false)
 	total_travel += travel
 	
 	# Apply constant speed
-	if floor_constant_speed != FloorConstantSpeed.DISABLED and can_apply_constant_speed and prev_on_floor and is_on_floor and not new_motion.is_zero_approx() :
+	if floor_constant_speed and can_apply_constant_speed and prev_on_floor and is_on_floor and not new_motion.is_zero_approx() :
 		var travel_slide_up : Vector3 = total_travel.slide(up_direction)
 		new_motion = new_motion.normalized() * maxf(0.0, initial_motion_slide_up.length() - travel_slide_up.length())
 	

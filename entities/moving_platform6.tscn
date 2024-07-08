@@ -10,10 +10,10 @@ albedo_color = Color(1, 0.933333, 0, 1)
 
 [sub_resource type="BoxMesh" id="BoxMesh_prw3n"]
 material = SubResource("StandardMaterial3D_eu7as")
-size = Vector3(3, 3, 1)
+size = Vector3(10, 3, 1)
 
-[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_5tgs3"]
-points = PackedVector3Array(1.5, 1.5, 0.5, 1.5, 1.5, -0.5, -1.5, 1.5, 0.5, 1.5, -1.5, 0.5, 1.5, -1.5, -0.5, -1.5, 1.5, -0.5, -1.5, -1.5, 0.5, -1.5, -1.5, -0.5)
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_oxnej"]
+points = PackedVector3Array(5, 1.5, 0.5, 5, 1.5, -0.5, -5, 1.5, 0.5, 5, -1.5, 0.5, 5, -1.5, -0.5, -5, 1.5, -0.5, -5, -1.5, 0.5, -5, -1.5, -0.5)
 
 [sub_resource type="Animation" id="Animation_ieucs"]
 length = 0.001
@@ -79,7 +79,7 @@ physics_material_override = SubResource("PhysicsMaterial_1u6br")
 mesh = SubResource("BoxMesh_prw3n")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="AnimatableBody"]
-shape = SubResource("ConvexPolygonShape3D_5tgs3")
+shape = SubResource("ConvexPolygonShape3D_oxnej")
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 root_node = NodePath("../AnimatableBody")

@@ -182,8 +182,8 @@ transform = Transform3D(1, 0, 0, 0, 0.707107, -0.707107, 0, 0.707107, 0.707107, 
 [node name="MovingPlatform16" parent="." instance=ExtResource("10_pgdae")]
 transform = Transform3D(1, 0, 0, 0, 0.948169, -0.317768, 0, 0.317768, 0.948169, 23.294, 1.05618, 15.3231)
 
-[node name="MovingPlatform12" parent="." instance=ExtResource("10_pgdae")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.18987, 10.1922)
+[node name="MovingPlatform31" parent="." instance=ExtResource("10_pgdae")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.442315, 1.18987, 10.1922)
 
 [node name="MovingPlatform20" parent="." instance=ExtResource("10_pgdae")]
 transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -20.0343, 5.8077, -23.8637)
@@ -215,7 +215,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25.8777, 2.04598, -13.2564)
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -10.3934, 0.853638, 13.6843)
 
 [node name="MovingPlatform2" parent="." instance=ExtResource("14_5eb0f")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.8689, 2.12751, -10.4306)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.309, 2.01261, -45.9001)
 
 [node name="Crate18" parent="." instance=ExtResource("11_rq15i")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25.8532, 2.2308, -17.4186)
