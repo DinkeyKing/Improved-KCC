@@ -106,8 +106,8 @@ var _wall_min_slide_angle : float = 15.0 :
 		_wall_min_slide_angle = value  # Set degree variable
 
 @export_group("Ceiling")
-## If [code]false[/code], upwards [member velocity] and motion will be removed before sliding on
-## ceilings.
+## If [code]false[/code], upwards [member velocity] and motion will be removed on ceiling collisions,
+## which prevents sliding up ceilings.
 @export var slide_on_ceiling : bool = true
 
 @export_group("Moving Obstacles")
@@ -130,8 +130,9 @@ var _wall_min_slide_angle : float = 15.0 :
 	set(value) : platform_vertical_detach_threshold = maxf(0.0, value)
 
 @export_group("Stepping")
-## If [code]true[/code], the character can climb all kinds low geometry with floor surfaces, not just steps.
-@export var use_surface_normals : bool = false
+## If [code]true[/code], the character can climb all kinds low geometry with floor surfaces, not just steps. [br]
+## [b]IMPORTANT NOTICE:[/b] To make stepping work for capsule colliders, this must be set to [code]true[/code]!
+@export var use_surface_normals : bool = true
 ## Sets the maximum height of the steps (and other low obstacles) the character can climb.
 @export_range(0.01, 256.0, 0.01, "suffix:m") var max_step_height : float = 0.26 :
 	set(value) : max_step_height = absf(value)
@@ -139,7 +140,7 @@ var _wall_min_slide_angle : float = 15.0 :
 @export_group("Rigid Body Interactions")
 ## If [code]false[/code], rigid bodies collisions will be treated as collisions with static bodies. [br]
 ## If [code]true[/code], contact impulses and weight force will be simulated when colliding with
-## rigid bodies. In this case, it's important that the collision mask of the rigid bodies that
+## rigid bodies. In this case, it's [b]important[/b] that the collision mask of the rigid bodies that
 ## will be interacted with has the character's collision layer excluded!
 @export var interact_with_rigid_bodies : bool = true
 ## The gravity acceleration used when applying a weight force.
@@ -225,6 +226,7 @@ var current_floor_normal            : Vector3
 var current_wall_normal             : Vector3
 var current_ceiling_normal          : Vector3
 var platform_velocity               : Vector3
+var floor_impact_velocity           : Vector3
 var remaining_floor_impact_velocity : Vector3
 var total_travel                    : Vector3
 var initial_motion_slide_up         : Vector3
@@ -280,7 +282,6 @@ func move_and_slide() -> bool :
 	current_floor_normal = Vector3.ZERO
 	current_wall_normal = Vector3.ZERO
 	current_ceiling_normal = Vector3.ZERO
-	remaining_floor_impact_velocity = Vector3.ZERO
 	collision_results.clear()
 	
 	# Move with requested motion mode
@@ -338,7 +339,8 @@ func snap_to_floor(p_snap_length : float) -> void :
 		# Fixes case when walking down step and reported collision normal is wall.
 		# NOTE : This triggers the snap method more often, but makes snapping more reliable.
 		var feet_pos : Vector3 = get_feet_position()
-		var floor_surface_found = search_for_floor_surface_normal(m_result, feet_pos.dot(up_direction))
+		var max_surface_height : float = feet_pos.dot(up_direction) + max_step_height
+		var floor_surface_found = search_for_floor_surface_normal(m_result, max_surface_height)
 		if floor_surface_found :
 			prev_on_floor_surface = true
 		return
@@ -529,7 +531,8 @@ func grounded_move(p_delta_t : float) -> void :
 	
 	
 	# Save floor impact velocity before snapping and sliding it
-	var floor_impact_velocity = Vector3.ZERO
+	floor_impact_velocity = Vector3.ZERO
+	remaining_floor_impact_velocity = Vector3.ZERO
 	if is_on_floor and not prev_on_floor :
 		floor_impact_velocity = velocity
 	
@@ -910,7 +913,8 @@ func move_and_slide_grounded(p_motion : Vector3, p_platform_pass : bool = false)
 		var slide_velocity_on_wall  : bool = not p_platform_pass and velocity.dot(result_state.wall_normal) < 0.0 and not collided_with_rigidbody
 		
 		# If wall is too high, don't do a step check
-		var wall_too_high : bool = (m_result.get_collision_point(result_state.deepest_wall_index) - (get_feet_position() + max_step_height * up_direction)).dot(up_direction) > 0.0
+		# FIXME : this optimisation doesn't work. Probably will delete later.
+		var wall_too_high : bool = (m_result.get_collision_point(result_state.deepest_wall_index) - get_feet_position()).dot(up_direction) > max_step_height
 		if not wall_too_high :
 			var wall_is_vertical_approx : bool = absf(result_state.wall_normal.dot(up_direction)) < WALL_VERTICAL_APPROX_CMP
 			# INFO : An integer is used, so that floor collision and floor surface can be differentiated.
@@ -925,7 +929,7 @@ func move_and_slide_grounded(p_motion : Vector3, p_platform_pass : bool = false)
 					var wall_surface_normal : Vector3 = search_for_wall_surface_normal_below(m_result, result_state.wall_collision_indexes)
 					var horizontal_wall_surface_normal : Vector3 = wall_surface_normal.slide(up_direction).normalized() if not wall_surface_normal == Vector3.ZERO else Vector3.ZERO
 					
-					# INFO : Only allow stepping if the horizontal motion faces opposite of the wall's surface normal.
+					# INFO : Only allow climbing if the horizontal motion faces opposite of the wall's surface normal.
 					# This stops the climbing from triggering, when colliding with a ledge from above.
 					var moving_away_from_ledge : bool = not wall_surface_normal == Vector3.ZERO and horizontal_motion.dot(horizontal_wall_surface_normal) > 0.0
 					
@@ -1095,10 +1099,9 @@ func move_and_slide_grounded(p_motion : Vector3, p_platform_pass : bool = false)
 		if slide_on_ceiling or not velocity_facing_up :
 			if slide_velocity : velocity = velocity.slide(result_state.ceiling_normal)
 		else :
-			# Remove vertical component first, than slide on ceiling
-			if slide_velocity : velocity = velocity.slide(up_direction).slide(result_state.ceiling_normal)
-			new_motion = new_motion.slide(up_direction).slide(result_state.ceiling_normal)
-			apply_default_sliding = false
+			# Remove vertical component
+			if slide_velocity : velocity = velocity.slide(up_direction)
+			new_motion = new_motion.slide(up_direction)
 	
 	
 	# Return if no motion remains, after handling special cases
@@ -1270,7 +1273,7 @@ func is_min_distance_to_floor(p_min_distance : float) -> FloorType :
 	
 	if use_surface_normals and result_state.s_wall :
 		var feet_pos            : Vector3 = get_feet_position()
-		var max_surface_height  : float = feet_pos.dot(up_direction)
+		var max_surface_height  : float = feet_pos.dot(up_direction) + max_step_height
 		var floor_surface_found : bool = search_for_floor_surface_normal(m_result, max_surface_height)
 		
 		if floor_surface_found :
@@ -1330,7 +1333,7 @@ func test_for_step(p_horizontal_motion : Vector3, p_horizontal_wall_normal : Vec
 		if use_surface_normals :
 			var floor_found : bool
 			var feet_pos : Vector3 = get_feet_position()
-			var max_surface_height : float = feet_pos.dot(up_direction) + step_height
+			var max_surface_height : float = feet_pos.dot(up_direction) + max_step_height
 			
 			floor_found = search_for_floor_surface_normal(motion_tester.res, max_surface_height, motion_tester.endpos)
 			if not floor_found :
@@ -1511,23 +1514,23 @@ func get_feet_position() -> Vector3 :
 	
 	if collider.shape is CylinderShape3D :
 		var cylinder := collider.shape as CylinderShape3D
-		return global_position + (cylinder.height * 0.5) * -up_direction
+		return collider.global_position + (cylinder.height * 0.5) * -up_direction
 	
 	if collider.shape is BoxShape3D :
 		var box := collider.shape as BoxShape3D
-		return global_position + (box.size.y * 0.5) * -up_direction
+		return collider.global_position + (box.size.y * 0.5) * -up_direction
 	
 	if collider.shape is CapsuleShape3D :
 		var capsule := collider.shape as CapsuleShape3D
-		return global_position + (capsule.height * 0.5) * -up_direction
+		return collider.global_position + (capsule.height * 0.5) * -up_direction
 	
 	if collider.shape is SphereShape3D :
 		var sphere := collider.shape as SphereShape3D
-		return global_position + (sphere.radius) * -up_direction
+		return collider.global_position + (sphere.radius) * -up_direction
 	
 	printerr("Shape not handled by get_feet_position()!")
 	
-	return global_position
+	return collider.global_position
 
 
 
@@ -1545,7 +1548,8 @@ func search_for_floor_surface_normal(p_m_result : PhysicsTestMotionResult3D, p_m
 			continue
 		
 		var col_normal : Vector3 = p_m_result.get_collision_normal(i)
-		var dest       : Vector3 = col_point - col_normal * RAYCAST_OFFSET_LENGTH
+		var offset_dir : Vector3 = -col_normal
+		var dest       : Vector3 = col_point + offset_dir * RAYCAST_OFFSET_LENGTH
 		
 		raycast.intersect(p_ray_origin, dest, self, collision_mask, direct_space_state)
 		
