@@ -28,7 +28,7 @@ are also a few of issues with it I wanted to fix.
 
 ### New features
 - Step/stair climbing with adjustable maximum step height. Surface normals can also be used to allow the character to climb over a range of low obstacles.
-- The chatacter can now detach from a moving platform, if the platform suddenly changes speed in the opposite direction of it's movement vertical to it's surface. The speed change threshold can be set.
+- The character can now detach from a moving platform, if the platform suddenly changes speed in the opposite direction of it's movement vertical to it's surface. The speed change threshold can be set.
 - Added the ability to slide the motion from platform velocity.
 - Moving walls and ceilings are reworked. They now accelarate the character based on their velocities.
 - Added optional rigid body interactions, which include contact impulses, weight force, and additional options for rigid body platforms.
@@ -38,6 +38,7 @@ are also a few of issues with it I wanted to fix.
 - When ```floor_block_on_wall``` is false, the ```wall_min_slide_angle``` only affects collisions with fully vertical walls, which I think is a better behaviour.
 - Velocity will now be slid on walls
 when ```motion_mode``` is set to ```MotionMode.FLOATING```, or when ```floor_block_on_wall``` is false. I can't think of a reason why I wouldn't modify the velocity on a wall.
+- Ceiling collisions are handled differently. Velocity will always slide on the ceiling. If ```slide_on_ceiling``` is false, the upwards velocity and motion is removed on ceiling collisions.
 
 ## How to use
 - Optional, but recommended: set 3D physics engine implementation to Godot Jolt. (https://github.com/godot-jolt/godot-jolt)
