@@ -83,7 +83,7 @@ enum FloorType {
 ## Sets a maximum snapping distance. When set to a value different from [code]0.0[/code], the body is kept attached to
 ## slopes when calling [method move_and_slide]. The snapping vector is determined by the given distance
 ## along the opposite direction of the [member up_direction].
-@export var max_snap_length : float = 0.26 :
+@export_range(0.0, 1.0, 0.01, "suffix:m") var max_snap_length : float = 0.26 :
 	set(value) : max_snap_length = absf(value)
 ## Maximum angle where a slope is still considered a floor (or a ceiling), rather than a wall.
 @export_range(0.0, 180.0, 0.1, "degrees")
@@ -131,10 +131,10 @@ var _wall_min_slide_angle : float = 15.0 :
 
 @export_group("Stepping")
 ## If [code]true[/code], the character can climb all kinds low geometry with floor surfaces, not just steps. [br]
-## [b]IMPORTANT NOTICE:[/b] To make stepping work for capsule colliders, this must be set to [code]true[/code]!
+## [b]IMPORTANT NOTICE:[/b] To make stepping work for capsule and sphere colliders, this must be set to [code]true[/code]!
 @export var use_surface_normals : bool = true
 ## Sets the maximum height of the steps (and other low obstacles) the character can climb.
-@export_range(0.01, 256.0, 0.01, "suffix:m") var max_step_height : float = 0.26 :
+@export_range(0.01, 1.0, 0.01, "suffix:m") var max_step_height : float = 0.26 :
 	set(value) : max_step_height = absf(value)
 
 @export_group("Rigid Body Interactions")
@@ -166,7 +166,7 @@ var _wall_min_slide_angle : float = 15.0 :
 	set(value) : rigid_body_platform_counter_torque_factor = clampf(value, 0.0, 1.0)
 ## If the length difference between the previously picked up horizontal (friction) platform velocity
 ## and the current platform's horizontal velocity exceeds this threshold, the horizontzal platform
-## velocity will be interpolated instead of directly picked up. [br]
+## velocity will be interpolated instead of instantly picked up. [br]
 ## This useful for stopping excessive amounts of accelarations on rigid bodies. [br]
 ## (Horizontal means horizontal relative to the platform surface.)
 @export_range(0.0, 64, 0.01, "suffix:m/s") var rigid_body_platform_horizontal_stick_threshold : float = 4.0 :
@@ -310,12 +310,12 @@ func move_and_slide() -> bool :
 
 
 ## Snaps the character to the floor, if there is floor below within 'p_snap_length' meters away
-func snap_to_floor(p_snap_length : float) -> void :
+func snap_to_floor(p_snap_length : float, snap_if_on_floor : bool = false) -> void :
 	
 	prev_on_floor_surface = false  # Set flag false by default
 	
 	# Already on floor, no need to snap
-	if is_on_floor :
+	if is_on_floor and not snap_if_on_floor :
 		return
 	
 	# Snap by at least safe margin to keep floor state consistent
@@ -336,11 +336,11 @@ func snap_to_floor(p_snap_length : float) -> void :
 	
 	if not (result_state.s_floor) :
 		# Check surface normal, if it's floor, allow another snap attempt on next frame
-		# Fixes case when walking down step and reported collision normal is wall.
+		# Fixes case when walking down step and reported collision normal is wall
 		# NOTE : This triggers the snap method more often, but makes snapping more reliable.
 		var feet_pos : Vector3 = get_feet_position()
-		var max_surface_height : float = feet_pos.dot(up_direction) + max_step_height
-		var floor_surface_found = search_for_floor_surface_normal(m_result, max_surface_height)
+		var max_surface_height : float = feet_pos.dot(up_direction)
+		var floor_surface_found : bool = search_for_floor_surface_normal(m_result, max_surface_height)
 		if floor_surface_found :
 			prev_on_floor_surface = true
 		return
@@ -484,11 +484,11 @@ func grounded_move(p_delta_t : float) -> void :
 	# since it does not actually report the collisions from recoveries, so an extra call is needed
 	# unfortunately to get the current collisions before moving with move_and_slide.
 	var res := PhysicsTestMotionResult3D.new()
-	var result_state := CollisionState.new()
+	var rest_result_state := CollisionState.new()
 	_move_and_collide(res, Vector3.ZERO, true, true, MAX_SNAP_COLLISIONS, false, safe_margin, false)
-	set_collision_state(res, result_state)
-	collision_results.append(result_state)
-	update_overall_state(result_state, true, true, true)
+	set_collision_state(res, rest_result_state)
+	collision_results.append(rest_result_state)
+	update_overall_state(rest_result_state, true, true, true)
 	
 	
 	# Move with platform motion first
@@ -538,9 +538,15 @@ func grounded_move(p_delta_t : float) -> void :
 	
 	
 	# Snap logic
-	var velocity_dot_up            : float = velocity.dot(up_direction)
-	var vel_dir_facing_up          : bool = velocity_dot_up > CMP_EPSILON
-	var platform_vel_dir_facing_up : bool = platform_velocity.dot(up_direction) > CMP_EPSILON
+	var velocities_facing_up : bool = (velocity + platform_velocity).dot(up_direction) > CMP_EPSILON
+	
+	# Check if hit floor while sliding
+	var hit_floor_during_sliding : bool = false
+	for collision_state in collision_results :
+		if collision_state == rest_result_state :
+			continue
+		if collision_state.s_floor :
+			hit_floor_during_sliding = true
 	
 	# Snap on platform if platform velocity is larger towards towards floor normal
 	var snap_on_platform : bool = false
@@ -563,9 +569,9 @@ func grounded_move(p_delta_t : float) -> void :
 						snap_on_platform = true
 	
 	var slid_velocity_on_floor : bool = false
-	if (not vel_dir_facing_up and not platform_vel_dir_facing_up and not detach_from_platform) or snap_on_platform :
-		if (prev_on_floor or prev_on_floor_surface) and not is_on_floor :
-			snap_to_floor(max_snap_length)
+	if (not velocities_facing_up and not detach_from_platform) or snap_on_platform :
+		if (prev_on_floor or prev_on_floor_surface) and not hit_floor_during_sliding :
+			snap_to_floor(max_snap_length, true)
 		
 		if is_on_floor :
 			if floor_stop_on_slope :
@@ -600,7 +606,7 @@ func grounded_move(p_delta_t : float) -> void :
 						var rigidbody_body_state : PhysicsDirectBodyState3D = PhysicsServer3D.body_get_direct_state(rigidbody.get_rid())
 						
 						# Apply weight force
-						if not platform_vel_dir_facing_up and not vel_dir_facing_up and prev_on_floor :
+						if not velocities_facing_up and prev_on_floor :
 							var avarage_collision_point : Vector3 = Math.calculate_vector3_array_avarage(collider_data.collision_points)
 							var collision_normal : Vector3 = collider_data.collision_normal
 							var normal_dot_up : float = collision_normal.dot(up_direction)
@@ -915,6 +921,7 @@ func move_and_slide_grounded(p_motion : Vector3, p_platform_pass : bool = false)
 		# If wall is too high, don't do a step check
 		# FIXME : this optimisation doesn't work. Probably will delete later.
 		var wall_too_high : bool = (m_result.get_collision_point(result_state.deepest_wall_index) - get_feet_position()).dot(up_direction) > max_step_height
+		wall_too_high = false
 		if not wall_too_high :
 			var wall_is_vertical_approx : bool = absf(result_state.wall_normal.dot(up_direction)) < WALL_VERTICAL_APPROX_CMP
 			# INFO : An integer is used, so that floor collision and floor surface can be differentiated.
@@ -1273,7 +1280,7 @@ func is_min_distance_to_floor(p_min_distance : float) -> FloorType :
 	
 	if use_surface_normals and result_state.s_wall :
 		var feet_pos            : Vector3 = get_feet_position()
-		var max_surface_height  : float = feet_pos.dot(up_direction) + max_step_height
+		var max_surface_height  : float = feet_pos.dot(up_direction)
 		var floor_surface_found : bool = search_for_floor_surface_normal(m_result, max_surface_height)
 		
 		if floor_surface_found :
@@ -1333,7 +1340,7 @@ func test_for_step(p_horizontal_motion : Vector3, p_horizontal_wall_normal : Vec
 		if use_surface_normals :
 			var floor_found : bool
 			var feet_pos : Vector3 = get_feet_position()
-			var max_surface_height : float = feet_pos.dot(up_direction) + max_step_height
+			var max_surface_height : float = feet_pos.dot(up_direction) + step_height
 			
 			floor_found = search_for_floor_surface_normal(motion_tester.res, max_surface_height, motion_tester.endpos)
 			if not floor_found :
@@ -1535,6 +1542,22 @@ func get_feet_position() -> Vector3 :
 
 
 
+## Returns the radius of the collider, if the collider is rounded, else it returns 0.0
+func get_collider_radius() -> float :
+	
+	if collider.shape is CapsuleShape3D :
+		var capsule := collider.shape as CapsuleShape3D
+		return capsule.radius
+	
+	if collider.shape is SphereShape3D :
+		var sphere := collider.shape as SphereShape3D
+		return sphere.radius
+	
+	return 0.0  # Collider is not round
+
+
+
+
 ## Checks if the collision result includes a floor surface normal using raycasts
 func search_for_floor_surface_normal(p_m_result : PhysicsTestMotionResult3D, p_max_height : float = 0.0, p_ray_origin : Vector3 = global_position) -> bool :
 	var raycast            := RayCast.new()
@@ -1544,7 +1567,8 @@ func search_for_floor_surface_normal(p_m_result : PhysicsTestMotionResult3D, p_m
 		var col_point  : Vector3 = p_m_result.get_collision_point(i)
 		
 		# If the surface is too high, it's not a floor
-		if col_point.dot(up_direction) > p_max_height :
+		var collider_radius : float = get_collider_radius()
+		if col_point.dot(up_direction) > p_max_height + collider_radius :
 			continue
 		
 		var col_normal : Vector3 = p_m_result.get_collision_normal(i)
