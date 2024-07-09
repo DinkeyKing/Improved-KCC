@@ -7,7 +7,7 @@ I highly recommend using the Godot Jolt addon to make collision checks more accu
 Demo project includes example controllers and a test environment.
 
 ## Current status
-Not yet fully complete. I'm still working towards a release version.
+The script has all of the main features implemented and is in a mostly stable state. Bug fixes, optimisations, new features and other changes will be pushed to this repository when they are made.
 
 ## Motivation
 
@@ -37,8 +37,8 @@ are also a few of issues with it I wanted to fix.
 - When ```floor_stop_on_slope``` is false, velocity is slid on the floor normal, instead of fully removing vertical velocity. This is useful for slippery slopes for example.
 - When ```floor_block_on_wall``` is false, the ```wall_min_slide_angle``` only affects collisions with fully vertical walls, which I think is a better behaviour.
 - Velocity will now be slid on walls
-when ```motion_mode``` is set to ```MotionMode.FLOATING```, or when ```floor_block_on_wall``` is false. I can't think of a reason why I wouldn't modify the velocity on a wall.
-- Ceiling collisions are handled differently. If ```slide_on_ceiling``` is false, the upwards velocity and motion is removed on ceiling collisions, which prevents sliding up ceilings.
+when ```motion_mode``` is set to ```MotionMode.FLOATING```, or when ```floor_block_on_wall``` is ```false```. I can't think of a reason why I wouldn't modify the velocity on a wall.
+- Ceiling collisions are handled differently. If ```slide_on_ceiling``` is ```false```, the upwards velocity and motion is removed on ceiling collisions, which prevents sliding up ceilings.
 
 ## How to use
 - Optional, but recommended: set 3D physics engine implementation to Godot Jolt. (https://github.com/godot-jolt/godot-jolt)
@@ -49,8 +49,10 @@ when ```motion_mode``` is set to ```MotionMode.FLOATING```, or when ```floor_blo
 - As with the built in interface, set up collision response parameters, set the desired velocity in ```_physics_process```  and call ```move_and_slide``` to move the body.
 ### Getting collision info
 You can reference the state variables (like ```is_on_floor```) and the collision result objects directly in the controller script, since in GDScript there are no access modifiers.
+### Using step climbing
+If you use a capsule or sphere collider, then ```use_surface_normals``` must be set to ```true``` to make step climbing work!
 ### Using rigid body interactions
-- If you wish to use rigid body interactions, make sure the character body is on a collision layer that is excluded from the rigid bodies' collision mask! (The chatacter script detects the collision and applies the impulses to both bodies.) This is important, because otherwise the rigid body would be colliding with a body with infinite mass!
+If you wish to use rigid body interactions, make sure the character body is on a collision layer that is excluded from the rigid bodies' collision mask! (The chatacter script detects the collision and applies the impulses to both bodies.) This is important, because otherwise the rigid body would be colliding with a body with infinite mass!
 #### Limitations
 - The contact impulses are estimations from the available collision data.
 - When calculating the impulse between the character and a rigid body, only those two bodies are considered.
