@@ -918,85 +918,79 @@ func move_and_slide_grounded(p_motion : Vector3, p_platform_pass : bool = false)
 		# Don't slide velocity, if it's facing away from the wall!
 		var slide_velocity_on_wall  : bool = not p_platform_pass and velocity.dot(result_state.wall_normal) < 0.0 and not collided_with_rigidbody
 		
-		# If wall is too high, don't do a step check
-		# FIXME : this optimisation doesn't work. Probably will delete later.
-		var wall_too_high : bool = (m_result.get_collision_point(result_state.deepest_wall_index) - get_feet_position()).dot(up_direction) > max_step_height
-		wall_too_high = false
-		if not wall_too_high :
-			var wall_is_vertical_approx : bool = absf(result_state.wall_normal.dot(up_direction)) < WALL_VERTICAL_APPROX_CMP
-			# INFO : An integer is used, so that floor collision and floor surface can be differentiated.
-			# If 'use_surface_normals' is enabled, the 'is_min_distance_to_floor' method should always run, 
-			# to get floor surface status.
-			var close_to_floor : int = (prev_on_floor or is_on_floor or is_min_distance_to_floor(max_step_height)) as int if not use_surface_normals else is_min_distance_to_floor(max_step_height)
-			
-			# Handle stepping and obstacle climbing
-			if not is_zero_approx(max_step_height) and (prev_on_floor or close_to_floor) :
-				# Handle special cases for surface normal stepping, when floor is surface only.
-				if use_surface_normals and close_to_floor == FloorType.SURFACE and not wall_is_vertical_approx :
-					var wall_surface_normal : Vector3 = search_for_wall_surface_normal_below(m_result, result_state.wall_collision_indexes)
-					var horizontal_wall_surface_normal : Vector3 = wall_surface_normal.slide(up_direction).normalized() if not wall_surface_normal == Vector3.ZERO else Vector3.ZERO
+		# Handle stepping and obstacle climbing
+		var wall_is_vertical_approx : bool = absf(result_state.wall_normal.dot(up_direction)) < WALL_VERTICAL_APPROX_CMP
+		# INFO : An integer is used, so that floor collision and floor surface can be differentiated.
+		# If 'use_surface_normals' is enabled, the 'is_min_distance_to_floor' method should always run, 
+		# to get floor surface status.
+		var close_to_floor : int = (prev_on_floor or is_on_floor or is_min_distance_to_floor(max_step_height)) as int if not use_surface_normals else is_min_distance_to_floor(max_step_height)
+		if not is_zero_approx(max_step_height) and (prev_on_floor or close_to_floor) :
+			# Handle special cases for surface normal stepping, when floor is surface only.
+			if use_surface_normals and close_to_floor == FloorType.SURFACE and not wall_is_vertical_approx :
+				var wall_surface_normal : Vector3 = search_for_wall_surface_normal_below(m_result, result_state.wall_collision_indexes)
+				var horizontal_wall_surface_normal : Vector3 = wall_surface_normal.slide(up_direction).normalized() if not wall_surface_normal == Vector3.ZERO else Vector3.ZERO
+				
+				# INFO : Only allow climbing if the horizontal motion faces opposite of the wall's surface normal.
+				# This stops the climbing from triggering, when colliding with a ledge from above.
+				var moving_away_from_ledge : bool = not wall_surface_normal == Vector3.ZERO and horizontal_motion.dot(horizontal_wall_surface_normal) > 0.0
+				
+				# Try and slide up to stable ground
+				if not moving_away_from_ledge and horizontal_motion.slide(result_state.wall_normal).dot(up_direction) > 0.0 :
+					# Slide using the intersection between the motion plane and the wall plane,
+					# in order to keep the direction intact
+					# Add offset to motion to help move to stable floor at low velocities
+					var offset_dir : Vector3 = -horizontal_normal
+					new_motion = new_motion.slide(up_direction) + offset_dir * safe_margin * RECOVERY_FACTOR
 					
-					# INFO : Only allow climbing if the horizontal motion faces opposite of the wall's surface normal.
-					# This stops the climbing from triggering, when colliding with a ledge from above.
-					var moving_away_from_ledge : bool = not wall_surface_normal == Vector3.ZERO and horizontal_motion.dot(horizontal_wall_surface_normal) > 0.0
+					# Retain horizontal magnitude of remaining motion
+					var wished_horizontal_length : float = new_motion.length()
 					
-					# Try and slide up to stable ground
-					if not moving_away_from_ledge and horizontal_motion.slide(result_state.wall_normal).dot(up_direction) > 0.0 :
-						# Slide using the intersection between the motion plane and the wall plane,
-						# in order to keep the direction intact
-						# Add offset to motion to help move to stable floor at low velocities
-						var offset_dir : Vector3 = -horizontal_normal
-						new_motion = new_motion.slide(up_direction) + offset_dir * safe_margin * RECOVERY_FACTOR
-						
-						# Retain horizontal magnitude of remaining motion
-						var wished_horizontal_length : float = new_motion.length()
-						
-						new_motion = up_direction.cross(new_motion).cross(result_state.wall_normal)
-						
-						var current_horizontal_length : float = new_motion.slide(up_direction).length()
-						if not is_zero_approx(current_horizontal_length) : 
-							new_motion *= (wished_horizontal_length / current_horizontal_length)
-						
-						# Reset gravity accumulation
-						if slide_velocity_on_wall and not velocity_facing_up: 
-							velocity = velocity.slide(up_direction)
-						
-						# Start new iteration
-						slide_count += 1
-						move_and_slide_grounded(new_motion, p_platform_pass)
-						return
-				# INFO : When surface normal stepping is allowed, the vertical wall check optimization
-				# is ignored to make surface normal stepping work on non vertical walls.
-				elif not has_stepped and (wall_is_vertical_approx or use_surface_normals) :
-					var step_height        : float   = 0.0
-					var h_remaining_motion : Vector3 = remaining_motion.slide(up_direction)
-					var step_motion_offset : Vector3 = -horizontal_normal * safe_margin * RECOVERY_FACTOR
-					var step_motion        : Vector3 = h_remaining_motion
-					# INFO : Step motion is extended, so that recoveries won't cancel out the motion towards
-					# the wall. This ensures stepping will always happen when collided with step facing towards it,
-					# regardless of the remaining motion.
+					new_motion = up_direction.cross(new_motion).cross(result_state.wall_normal)
 					
-					step_height = test_for_step(step_motion + step_motion_offset, horizontal_normal)
+					var current_horizontal_length : float = new_motion.slide(up_direction).length()
+					if not is_zero_approx(current_horizontal_length) : 
+						new_motion *= (wished_horizontal_length / current_horizontal_length)
 					
-					if not is_zero_approx(step_height) :
-						var up : Vector3 = (step_height + safe_margin) * up_direction
-						
-						has_stepped = true
-						global_position += up  # Move up to step height
-						is_on_wall = prev_iteration_on_wall  # Don't set wall flag, since a step is not considered a wall
-						
-						# Find and remove wall reference in stored data, since a step is not considered a wall
-						var collider_index : int = m_result.get_collider_id(result_state.deepest_wall_index)
-						var array_index    : int = ColliderData.find_by_id(collider_datas, collider_index) 
-						if array_index != -1 :
-							collider_datas.remove_at(array_index)
-						
-						new_motion = step_motion + step_motion_offset
-						
-						# Start new iteration
-						slide_count += 1
-						move_and_slide_grounded(new_motion, p_platform_pass)
-						return
+					# Reset gravity accumulation
+					if slide_velocity_on_wall and not velocity_facing_up: 
+						velocity = velocity.slide(up_direction)
+					
+					# Start new iteration
+					slide_count += 1
+					move_and_slide_grounded(new_motion, p_platform_pass)
+					return
+			# INFO : When surface normal stepping is allowed, the vertical wall check optimization
+			# is ignored to make surface normal stepping work on non vertical walls.
+			elif not has_stepped and (wall_is_vertical_approx or use_surface_normals) :
+				var step_height        : float   = 0.0
+				var h_remaining_motion : Vector3 = remaining_motion.slide(up_direction)
+				var step_motion_offset : Vector3 = -horizontal_normal * safe_margin * RECOVERY_FACTOR
+				var step_motion        : Vector3 = h_remaining_motion
+				# INFO : Step motion is extended, so that recoveries won't cancel out the motion towards
+				# the wall. This ensures stepping will always happen when collided with step facing towards it,
+				# regardless of the remaining motion.
+				
+				step_height = test_for_step(step_motion + step_motion_offset, horizontal_normal)
+				
+				if not is_zero_approx(step_height) :
+					var up : Vector3 = (step_height + safe_margin) * up_direction
+					
+					has_stepped = true
+					global_position += up  # Move up to step height
+					is_on_wall = prev_iteration_on_wall  # Don't set wall flag, since a step is not considered a wall
+					
+					# Find and remove wall reference in stored data, since a step is not considered a wall
+					var collider_index : int = m_result.get_collider_id(result_state.deepest_wall_index)
+					var array_index    : int = ColliderData.find_by_id(collider_datas, collider_index) 
+					if array_index != -1 :
+						collider_datas.remove_at(array_index)
+					
+					new_motion = step_motion + step_motion_offset
+					
+					# Start new iteration
+					slide_count += 1
+					move_and_slide_grounded(new_motion, p_platform_pass)
+					return
 		
 		# Stop jittering in corners
 		if result_state.wall_normals.size() > 1 :

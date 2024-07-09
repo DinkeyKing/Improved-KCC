@@ -9,11 +9,8 @@ margin = 0.0
 size = Vector3(1, 2, 1)
 
 [node name="BuiltInPlayer" type="CharacterBody3D"]
-wall_min_slide_angle = 0.0
 floor_snap_length = 0.26
-safe_margin = 0.002
 script = ExtResource("1_ebx0x")
-jump_impulse_length = 10.0
 
 [node name="CollisionShape" type="CollisionShape3D" parent="."]
 shape = SubResource("BoxShape3D_6juc0")
