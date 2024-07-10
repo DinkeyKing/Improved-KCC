@@ -1322,7 +1322,7 @@ func test_for_step(p_horizontal_motion : Vector3, p_horizontal_wall_normal : Vec
 	if not motion_tester.hit :
 		return 0.0
 	
-	var step_height : float = motion_tester.endpos.dot(up_direction) - global_position.dot(up_direction)
+	var step_height : float = (motion_tester.endpos - global_position).dot(up_direction)
 	
 	if step_height < 0.0 or is_zero_approx(step_height) :
 		return 0.0
@@ -1351,9 +1351,7 @@ func test_for_step(p_horizontal_motion : Vector3, p_horizontal_wall_normal : Vec
 	# NOTE : When sliding parallel along a flat wall, the horizontal motion towards the wall normal
 	# can be less than zero due to recoveries, so an epsilon is needed. Otherwise steps can be
 	# falsely detected.
-	# FIXME? : This value could be different with different safe margins, the current one is measured
-	# using a 0.001 value safe margin.
-	if h_motion_sum.dot(p_horizontal_wall_normal) >= -STEP_DEPTH_CMP_EPSILON :
+	if h_motion_sum.dot(p_horizontal_wall_normal) >= -safe_margin :
 		return 0.0
 	
 	return step_height
