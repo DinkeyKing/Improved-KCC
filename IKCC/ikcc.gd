@@ -133,7 +133,7 @@ var _wall_min_slide_angle : float = 15.0 :
 ## [b]IMPORTANT NOTICE:[/b] To make stepping work for capsule and sphere colliders, this must be set to [code]true[/code]!
 @export var use_surface_normals : bool = true
 ## Sets the maximum height of the steps (and other low obstacles) the character can climb.
-@export_range(0.01, 1.0, 0.01, "suffix:m") var max_step_height : float = 0.26 :
+@export_range(0.0, 1.0, 0.01, "suffix:m") var max_step_height : float = 0.26 :
 	set(value) : max_step_height = absf(value)
 
 @export_group("Rigid Body Interactions")
