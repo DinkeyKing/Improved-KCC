@@ -18,7 +18,6 @@ const CMP_EPSILON               : float = 0.00001  # Default: 0.0001
 const ANGLE_CMP_EPSILON         : float = 0.01     # Default: 0.01
 const RAYCAST_OFFSET_LENGTH     : float = 0.001    # Default: 0.001
 const RECOVERY_FACTOR           : float = 2.0      # Default: 2.0
-const STEP_DEPTH_CMP_EPSILON    : float = 0.00005  # Default: 0.00005
 const WALL_VERTICAL_APPROX_CMP  : float = 0.01     # Default: 0.01
 
 # INFO RECOVERY_FACTOR : The amount of recovery can be more than the safe margin,
