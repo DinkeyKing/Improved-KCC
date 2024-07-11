@@ -294,6 +294,8 @@ func move_and_slide() -> bool :
 		if platform_leave_action == PlatformLeaveAction.ADD_VELOCITY_NO_DOWNWARDS and platform_velocity.dot(up_direction) < 0.0 :
 			platform_velocity = platform_velocity.slide(up_direction)
 		
+		print(platform_velocity)
+		
 		velocity += platform_velocity
 		platform_velocity = Vector3.ZERO
 	
@@ -430,11 +432,13 @@ func grounded_move(p_delta_t : float) -> void :
 						# Handle friction component
 						var platform_friction_velocity : Vector3 = horizontal_platform_velocity
 						var prev_platform_friction_velocity : Vector3 = prev_platform_velocity.slide(collision_normal)
-						var length_diff : float = absf((platform_friction_velocity - prev_platform_friction_velocity).length())
-						if length_diff > rigid_body_platform_horizontal_stick_threshold :
-							var lerp_weight : float = rigidbody.physics_material_override.friction * rigid_body_platform_friction_strength * p_delta_t
-							
-							platform_friction_velocity = prev_platform_friction_velocity.lerp(platform_friction_velocity, lerp_weight)
+						# If friction velocity has turned around and is not too large, instantly pick up the new velocity
+						if not (platform_friction_velocity.dot(prev_platform_friction_velocity) < 0.0 and platform_friction_velocity.length_squared() < rigid_body_platform_horizontal_stick_threshold ** 2.0) :
+							var length_diff : float = absf((platform_friction_velocity - prev_platform_friction_velocity).length())
+							if length_diff > rigid_body_platform_horizontal_stick_threshold :
+								var lerp_weight : float = rigidbody.physics_material_override.friction * rigid_body_platform_friction_strength * p_delta_t
+								
+								platform_friction_velocity = prev_platform_friction_velocity.lerp(platform_friction_velocity, lerp_weight)
 						
 						# Combine push and friction components
 						platform_velocity = platform_push_velocity + platform_friction_velocity
