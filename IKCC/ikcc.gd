@@ -1590,7 +1590,7 @@ func search_for_wall_surface_normal_below(p_m_result : PhysicsTestMotionResult3D
 	for i in p_wall_indexes :
 		var col_point  : Vector3 = p_m_result.get_collision_point(i)
 		var col_normal : Vector3 = p_m_result.get_collision_normal(i)
-		var dest       : Vector3 = col_point + Vector3.DOWN * RAYCAST_OFFSET_LENGTH  # Offset downward to find wall surface below
+		var dest       : Vector3 = col_point + (-up_direction) * RAYCAST_OFFSET_LENGTH  # Offset downward to find wall surface below
 		var origin     : Vector3 = col_point + col_normal * RAYCAST_OFFSET_LENGTH
 		
 		raycast.intersect(origin, dest, self, collision_mask, direct_space_state)
