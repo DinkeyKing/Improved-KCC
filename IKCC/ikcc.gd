@@ -1339,7 +1339,7 @@ func test_for_step(p_horizontal_motion : Vector3, p_horizontal_wall_normal : Vec
 			var feet_pos : Vector3 = get_feet_position()
 			var max_surface_height : float = feet_pos.dot(up_direction) + step_height
 			
-			floor_found = search_for_floor_surface_normal(motion_tester.res, max_surface_height, motion_tester.endpos)
+			floor_found = search_for_floor_surface_normal(motion_tester.res, max_surface_height, motion_tester.endpos + collider.position)
 			if not floor_found :
 				return 0.0
 		else :
@@ -1554,7 +1554,7 @@ func get_collider_radius() -> float :
 
 
 ## Checks if the collision result includes a floor surface normal using raycasts
-func search_for_floor_surface_normal(p_m_result : PhysicsTestMotionResult3D, p_max_height : float = 0.0, p_ray_origin : Vector3 = global_position) -> bool :
+func search_for_floor_surface_normal(p_m_result : PhysicsTestMotionResult3D, p_max_height : float = 0.0, p_ray_origin : Vector3 = collider.global_position) -> bool :
 	var raycast            := RayCast.new()
 	var direct_space_state : PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
 	
