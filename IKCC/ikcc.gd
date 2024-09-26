@@ -434,7 +434,7 @@ func grounded_move(p_delta_t : float) -> void :
 						if not (platform_friction_velocity.dot(prev_platform_friction_velocity) < 0.0 and platform_friction_velocity.length_squared() < rigid_body_platform_horizontal_stick_threshold ** 2.0) :
 							var length_diff : float = absf((platform_friction_velocity - prev_platform_friction_velocity).length())
 							if length_diff > rigid_body_platform_horizontal_stick_threshold :
-								var lerp_weight : float = rigidbody.physics_material_override.friction * rigid_body_platform_friction_strength * p_delta_t
+								var lerp_weight : float = (rigidbody.physics_material_override.friction if rigidbody.physics_material_override else 1.0) * rigid_body_platform_friction_strength * p_delta_t
 								
 								platform_friction_velocity = prev_platform_friction_velocity.lerp(platform_friction_velocity, lerp_weight)
 						
@@ -1654,7 +1654,7 @@ func calculate_impulse_from_collision(p_rigidbody : RigidBody3D, p_collider_data
 		
 	impulse_data.bodies_separating = false
 	
-	var restitution : float = minf(physics_material_bounce, p_rigidbody.physics_material_override.bounce)
+	var restitution : float = minf(physics_material_bounce, p_rigidbody.physics_material_override.bounce if p_rigidbody.physics_material_override else 0.0)
 	
 	var j_denom : float = (1.0 / m1) + (1.0 / m2) + (average_normal.dot((r2.cross(average_normal) * I2_inv).cross(r2)))
 	var j : float= -(1.0 + restitution) * v_rel_norm / j_denom
