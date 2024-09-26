@@ -294,8 +294,6 @@ func move_and_slide() -> bool :
 		if platform_leave_action == PlatformLeaveAction.ADD_VELOCITY_NO_DOWNWARDS and platform_velocity.dot(up_direction) < 0.0 :
 			platform_velocity = platform_velocity.slide(up_direction)
 		
-		print(platform_velocity)
-		
 		velocity += platform_velocity
 		platform_velocity = Vector3.ZERO
 	
