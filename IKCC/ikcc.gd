@@ -548,6 +548,7 @@ func grounded_move(p_delta_t : float) -> void :
 			continue
 		if collision_state.s_floor :
 			hit_floor_during_sliding = true
+			break
 	
 	# Snap on platform if platform velocity is larger towards towards floor normal
 	var snap_on_platform : bool = false
