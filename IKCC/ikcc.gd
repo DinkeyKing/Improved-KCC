@@ -557,7 +557,7 @@ func grounded_move(p_delta_t : float) -> void :
 	# Snap on platform if platform velocity is larger towards towards floor normal
 	# NOTE: This is needed for the first time colliding with an up moving platform, while also moving up
 	var snap_on_platform : bool = false
-	if current_floor_collider_encoded and not prev_had_floor_collider_saved and velocities_facing_up :
+	if current_floor_collider_encoded and not prev_had_floor_collider_saved and velocity_facing_up :
 		var floor_collider_object : Object = instance_from_id(current_floor_collider_encoded.object_id)
 		
 		if floor_collider_object is PhysicsBody3D :
@@ -676,7 +676,7 @@ func floating_move(p_delta_t : float) -> void :
 	_move_and_collide(res, Vector3.ZERO, true, true, MAX_SNAP_COLLISIONS, false, safe_margin, false)
 	set_collision_state(res, result_state)
 	collision_results.append(result_state)
-	update_overall_state(result_state, true, true, true)
+	update_overall_state(result_state, false, true, false)
 	
 	
 	# Move with motion

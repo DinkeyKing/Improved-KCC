@@ -23,8 +23,6 @@ axis_lock_angular_y = true
 axis_lock_angular_z = true
 script = ExtResource("1_k76p5")
 collider = NodePath("CollisionShape")
-max_snap_length = 0.59
-max_step_height = 0.68
 
 [node name="CollisionShape" type="CollisionShape3D" parent="."]
 shape = SubResource("CapsuleShape3D_dc48x")
