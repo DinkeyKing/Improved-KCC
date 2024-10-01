@@ -140,7 +140,25 @@ transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -7.024
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -7.02412, 4.68021, -4.34459)
 
 [node name="MovingPlatform4" parent="." instance=ExtResource("6_tpsq8")]
-transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, -2.65694, 0.944698, 14.214)
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, -2.65104, 0.944698, 14.214)
+
+[node name="MovingPlatform6" parent="." instance=ExtResource("6_tpsq8")]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0.478402, 0.470374, 13.8575)
+
+[node name="MovingPlatform7" parent="." instance=ExtResource("6_tpsq8")]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 1.29437, 0.248316, 13.8575)
+
+[node name="MovingPlatform12" parent="." instance=ExtResource("6_tpsq8")]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 2.22739, -0.00411683, 13.8575)
+
+[node name="MovingPlatform32" parent="." instance=ExtResource("6_tpsq8")]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 3.04012, -0.310903, 13.8575)
+
+[node name="MovingPlatform33" parent="." instance=ExtResource("6_tpsq8")]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 4.00421, -0.522795, 13.8575)
+
+[node name="MovingPlatform34" parent="." instance=ExtResource("6_tpsq8")]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 4.94476, -0.754619, 13.8575)
 
 [node name="MovingPlatform8" parent="." instance=ExtResource("8_h4mj5")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -6.1108, 4.7693, -7.59099)

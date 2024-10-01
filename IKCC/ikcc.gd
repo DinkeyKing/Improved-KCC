@@ -1,4 +1,5 @@
 
+
 ## Implements a complex 'move and slide' type collision response for character bodies.
 class_name IKCC
 extends PhysicsBody3D
@@ -309,12 +310,12 @@ func move_and_slide() -> bool :
 
 
 ## Snaps the character to the floor, if there is floor below within 'p_snap_length' meters away
-func snap_to_floor(p_snap_length : float, snap_if_on_floor : bool = false) -> void :
+func snap_to_floor(p_snap_length : float) -> void :
 	
 	prev_on_floor_surface = false  # Set flag false by default
 	
 	# Already on floor, no need to snap
-	if is_on_floor and not snap_if_on_floor :
+	if is_on_floor :
 		return
 	
 	# Snap by at least safe margin to keep floor state consistent
@@ -484,12 +485,14 @@ func grounded_move(p_delta_t : float) -> void :
 	# HACK (EXTERNAL) : The method 'body_test_motion' (regardless of the physics server) does not work as advertised
 	# since it does not actually report the collisions from recoveries, so an extra call is needed
 	# unfortunately to get the current collisions before moving with move_and_slide.
+	var ignore_floor_collisions: bool = prev_had_floor_collider_saved or detach_from_platform
+	
 	var res := PhysicsTestMotionResult3D.new()
 	var rest_result_state := CollisionState.new()
 	_move_and_collide(res, Vector3.ZERO, true, true, MAX_SNAP_COLLISIONS, false, safe_margin, false)
 	set_collision_state(res, rest_result_state)
 	collision_results.append(rest_result_state)
-	update_overall_state(rest_result_state, true, true, true)
+	update_overall_state(rest_result_state, not ignore_floor_collisions, true, true)
 	
 	
 	# Move with platform motion first
@@ -540,6 +543,7 @@ func grounded_move(p_delta_t : float) -> void :
 	
 	# Snap logic
 	var velocities_facing_up : bool = (velocity + platform_velocity).dot(up_direction) > CMP_EPSILON
+	var velocity_facing_up : bool = velocity.dot(up_direction) > CMP_EPSILON
 	
 	# Check if hit floor while sliding
 	var hit_floor_during_sliding : bool = false
@@ -551,8 +555,9 @@ func grounded_move(p_delta_t : float) -> void :
 			break
 	
 	# Snap on platform if platform velocity is larger towards towards floor normal
+	# NOTE: This is needed for the first time colliding with an up moving platform, while also moving up
 	var snap_on_platform : bool = false
-	if current_floor_collider_encoded and not prev_had_floor_collider_saved :
+	if current_floor_collider_encoded and not prev_had_floor_collider_saved and velocities_facing_up :
 		var floor_collider_object : Object = instance_from_id(current_floor_collider_encoded.object_id)
 		
 		if floor_collider_object is PhysicsBody3D :
@@ -567,13 +572,13 @@ func grounded_move(p_delta_t : float) -> void :
 					var local_position : Vector3 = global_position - platform_body_state.transform.origin
 					var current_platform_velocity : Vector3 = platform_body_state.get_velocity_at_local_position(local_position)
 					
-					if velocity.dot(current_floor_normal) < current_platform_velocity.dot(current_floor_normal) :
+					if current_floor_normal.dot(current_platform_velocity - velocity) > 0.0 :
 						snap_on_platform = true
 	
 	var slid_velocity_on_floor : bool = false
-	if (not velocities_facing_up and not detach_from_platform) or snap_on_platform :
+	if (not velocity_facing_up and not detach_from_platform) or snap_on_platform :
 		if (prev_on_floor or prev_on_floor_surface) and not hit_floor_during_sliding :
-			snap_to_floor(max_snap_length, true)
+			snap_to_floor(max_snap_length)
 		
 		if is_on_floor :
 			if floor_stop_on_slope :
@@ -671,7 +676,7 @@ func floating_move(p_delta_t : float) -> void :
 	_move_and_collide(res, Vector3.ZERO, true, true, MAX_SNAP_COLLISIONS, false, safe_margin, false)
 	set_collision_state(res, result_state)
 	collision_results.append(result_state)
-	update_overall_state(result_state, false, true, false)
+	update_overall_state(result_state, true, true, true)
 	
 	
 	# Move with motion
@@ -755,7 +760,7 @@ func add_wall_and_ceiling_push_velocity() -> void :
 # NOTICE : The built in 'move_and_collide' does not suffice because :
 # - Slide cacelling can't be turned off
 # - The returned KinematicCollision3D object provides too little information about the collision
-func _move_and_collide(p_res : PhysicsTestMotionResult3D, p_motion : Vector3, p_test_only : bool = false, p_rec : bool = false, p_max_col : int = 1, p_cancel_sliding : bool = false, p_margin : float = safe_margin, platform_pass : bool = false) -> bool :
+func _move_and_collide(p_res : PhysicsTestMotionResult3D, p_motion : Vector3, p_test_only : bool = false, p_rec : bool = false, p_max_col : int = 1, p_cancel_sliding : bool = false, p_margin : float = safe_margin, p_platform_pass : bool = false) -> bool :
 	var params := PhysicsTestMotionParameters3D.new()
 	
 	params.motion = p_motion
@@ -765,7 +770,7 @@ func _move_and_collide(p_res : PhysicsTestMotionResult3D, p_motion : Vector3, p_
 	params.recovery_as_collision = p_rec
 	
 	# Exclude platform object, when applying platform motion
-	if platform_pass and current_floor_collider_encoded :
+	if p_platform_pass and current_floor_collider_encoded :
 		params.exclude_objects = [current_floor_collider_encoded.object_id]
 	
 	var collided      : bool = PhysicsServer3D.body_test_motion(self, params, p_res)
