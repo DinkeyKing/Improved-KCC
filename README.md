@@ -25,6 +25,7 @@ are also a few of issues with it I wanted to fix.
 ### Improvements
 - Walls can now cancel out to ceiling, similar to how they can cancel out to floor.
 - Floor snap safe margin can be set seperately from the safe margin used for slide collisions.
+- The character also detects collisions that are exclusively the result of motion from other bodies.
 
 ### New features
 - Step/stair climbing with adjustable maximum step height. Surface normals can also be used to allow the character to climb over a range of low obstacles.
@@ -52,7 +53,7 @@ You can reference the state variables (like ```is_on_floor```) and the collision
 ### Using step climbing
 If you use a capsule or sphere collider, then ```use_surface_normals``` must be set to ```true``` to make step climbing work!
 ### Using rigid body interactions
-If you wish to use rigid body interactions, make sure the character body is on a collision layer that is excluded from the rigid bodies' collision mask! (The chatacter script detects the collision and applies the impulses to both bodies.) This is important, because otherwise the rigid body would be colliding with a body with infinite mass!
+If you wish to use rigid body interactions, make sure the character body is on a collision layer that is excluded from the rigid bodies' collision mask! (The character script detects the collision and applies the impulses to both bodies.) This is important, because otherwise the rigid body would be colliding with a body with infinite mass!
 #### Limitations
 - The contact impulses are estimations from the available collision data.
 - When calculating the impulse between the character and a rigid body, only those two bodies are considered.
