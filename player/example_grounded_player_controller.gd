@@ -1,5 +1,4 @@
 
-
 ## Example grounded player controller using the IKCC collision response.
 extends IKCC
 

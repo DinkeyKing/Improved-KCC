@@ -1,5 +1,4 @@
 
-
 ## Implements a complex 'move and slide' type collision response for character bodies.
 class_name IKCC
 extends PhysicsBody3D
@@ -485,14 +484,16 @@ func grounded_move(p_delta_t : float) -> void :
 	# HACK (EXTERNAL) : The method 'body_test_motion' (regardless of the physics server) does not work as advertised
 	# since it does not actually report the collisions from recoveries, so an extra call is needed
 	# unfortunately to get the current collisions before moving with move_and_slide.
-	var ignore_floor_collisions: bool = prev_had_floor_collider_saved or detach_from_platform
-	
 	var res := PhysicsTestMotionResult3D.new()
 	var rest_result_state := CollisionState.new()
 	_move_and_collide(res, Vector3.ZERO, true, true, MAX_SNAP_COLLISIONS, false, safe_margin, false)
-	set_collision_state(res, rest_result_state)
+	set_collision_state(res, rest_result_state, true)
 	collision_results.append(rest_result_state)
-	update_overall_state(rest_result_state, not ignore_floor_collisions, true, true)
+	update_overall_state(rest_result_state, true, true, true)
+	
+	var snap_on_platform : bool = is_on_floor
+	# NOTE: Slide velocity on floor later, when a moving platform collides with the character
+	# from below that is faster towards the collision normal than the character.
 	
 	
 	# Move with platform motion first
@@ -553,27 +554,6 @@ func grounded_move(p_delta_t : float) -> void :
 		if collision_state.s_floor :
 			hit_floor_during_sliding = true
 			break
-	
-	# Snap on platform if platform velocity is larger towards towards floor normal
-	# NOTE: This is needed for the first time colliding with an up moving platform, while also moving up
-	var snap_on_platform : bool = false
-	if current_floor_collider_encoded and not prev_had_floor_collider_saved and velocity_facing_up :
-		var floor_collider_object : Object = instance_from_id(current_floor_collider_encoded.object_id)
-		
-		if floor_collider_object is PhysicsBody3D :
-			var floor_collider := floor_collider_object as PhysicsBody3D
-			var platform_rid : RID = floor_collider.get_rid()
-			var excluded : bool = (moving_platform_layers & PhysicsServer3D.body_get_collision_layer(platform_rid)) == 0
-			
-			if platform_rid.is_valid() and not excluded :
-				var platform_body_state : PhysicsDirectBodyState3D = PhysicsServer3D.body_get_direct_state(platform_rid)
-				
-				if platform_body_state :
-					var local_position : Vector3 = global_position - platform_body_state.transform.origin
-					var current_platform_velocity : Vector3 = platform_body_state.get_velocity_at_local_position(local_position)
-					
-					if current_floor_normal.dot(current_platform_velocity - velocity) > 0.0 :
-						snap_on_platform = true
 	
 	var slid_velocity_on_floor : bool = false
 	if (not velocity_facing_up and not detach_from_platform) or snap_on_platform :
@@ -1369,7 +1349,7 @@ func test_for_step(p_horizontal_motion : Vector3, p_horizontal_wall_normal : Vec
 
 ## Calculates information about given collisions
 ## and stores it in the given 'CollisionState' object.
-func set_collision_state(p_motion_result : PhysicsTestMotionResult3D, p_col_state : CollisionState) -> void :
+func set_collision_state(p_motion_result : PhysicsTestMotionResult3D, p_col_state : CollisionState, rest_check : bool = false) -> void :
 	
 	# Check for null reference
 	if not p_motion_result :
@@ -1394,6 +1374,15 @@ func set_collision_state(p_motion_result : PhysicsTestMotionResult3D, p_col_stat
 	for i in collision_count :
 		var collision_normal : Vector3 = p_motion_result.get_collision_normal(i)
 		var collision_depth  : float = p_motion_result.get_collision_depth(i)
+		
+		# NOTE: When checking collisions in a resting positions, we only want the ones where
+		# The orher body is moving towards the character, and the character is not moving towards
+		# the other body.
+		if rest_check :
+			var collider_velocity : Vector3 = p_motion_result.get_collider_velocity(i)
+			var character_summed_velocity : Vector3 = velocity + platform_velocity
+			if velocity.dot(collision_normal) < 0.0 or collision_normal.dot(character_summed_velocity - collider_velocity) > 0.0 :
+				continue
 		
 		if motion_mode == MotionMode.GROUNDED :
 			# Check if floor collision
@@ -1459,7 +1448,6 @@ func set_collision_state(p_motion_result : PhysicsTestMotionResult3D, p_col_stat
 			if ceiling_angle <= floor_max_angle + ANGLE_CMP_EPSILON :
 				p_col_state.s_ceiling = true
 				p_col_state.ceiling_normal = combined_wall_normal
-
 
 
 

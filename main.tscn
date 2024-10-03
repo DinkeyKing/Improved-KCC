@@ -143,19 +143,19 @@ transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -7.024
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, -2.65104, 0.944698, 14.214)
 
 [node name="MovingPlatform6" parent="." instance=ExtResource("6_tpsq8")]
-transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0.478402, 0.470374, 13.8575)
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0.478402, -0.245023, 13.8575)
 
 [node name="MovingPlatform7" parent="." instance=ExtResource("6_tpsq8")]
-transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 1.29437, 0.248316, 13.8575)
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 1.29437, -0.338853, 13.8575)
 
 [node name="MovingPlatform12" parent="." instance=ExtResource("6_tpsq8")]
-transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 2.22739, -0.00411683, 13.8575)
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 2.22739, -0.445072, 13.8575)
 
 [node name="MovingPlatform32" parent="." instance=ExtResource("6_tpsq8")]
-transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 3.04012, -0.310903, 13.8575)
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 3.04012, -0.543635, 13.8575)
 
 [node name="MovingPlatform33" parent="." instance=ExtResource("6_tpsq8")]
-transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 4.00421, -0.522795, 13.8575)
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 4.00421, -0.651565, 13.8575)
 
 [node name="MovingPlatform34" parent="." instance=ExtResource("6_tpsq8")]
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 4.94476, -0.754619, 13.8575)
@@ -188,7 +188,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.61095, 3.97961, -12.1961)
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 7.02923, 0.172108, 6.47293)
 
 [node name="MovingPlatform30" parent="." instance=ExtResource("10_pgdae")]
-transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, -4.54352, 0.172108, 14.1565)
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, -4.54352, -0.0325722, 14.1565)
 
 [node name="MovingPlatform13" parent="." instance=ExtResource("10_pgdae")]
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 7.02923, 3.55182, 11.2194)
