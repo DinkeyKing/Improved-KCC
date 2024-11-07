@@ -4,16 +4,15 @@
 [ext_resource type="Script" path="res://utilities/input_buffer.gd" id="1_p4g84"]
 [ext_resource type="Script" path="res://player/camera_controller.gd" id="2_0orvi"]
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_6juc0"]
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_n2o82"]
 margin = 0.0
-size = Vector3(1, 2, 1)
 
 [node name="BuiltInPlayer" type="CharacterBody3D"]
 floor_snap_length = 0.26
 script = ExtResource("1_ebx0x")
 
 [node name="CollisionShape" type="CollisionShape3D" parent="."]
-shape = SubResource("BoxShape3D_6juc0")
+shape = SubResource("CapsuleShape3D_n2o82")
 
 [node name="PivotY" type="Node3D" parent="."]
 script = ExtResource("2_0orvi")

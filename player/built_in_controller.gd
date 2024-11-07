@@ -40,8 +40,8 @@ extends CharacterBody3D
 
 @onready var head                   := $PivotY                   as Node3D
 @onready var jump_input_buffer      := $JumpInputBuffer          as InputBuffer
-@onready var speed_label            := $GUI/SpeedLabel           as Label
-@onready var horizontal_speed_label := $GUI/HorizontalSpeedLabel as Label
+#@onready var speed_label            := $GUI/SpeedLabel           as Label
+#@onready var horizontal_speed_label := $GUI/HorizontalSpeedLabel as Label
 
 
 
@@ -72,8 +72,9 @@ func _ready() -> void :
 
 ## _process
 func _process(_delta : float) -> void :
-	speed_label.text = "de facto speed: %0.2f u/s" % get_real_velocity().length()
-	horizontal_speed_label.text = "horizontal de facto speed: %0.2f u/s" % get_real_velocity().slide(up_direction).length()
+	pass
+	#speed_label.text = "de facto speed: %0.2f u/s" % get_real_velocity().length()
+	#horizontal_speed_label.text = "horizontal de facto speed: %0.2f u/s" % get_real_velocity().slide(up_direction).length()
 
 
 
@@ -96,7 +97,7 @@ func set_initial_velocity() -> void :
 	apply_friction()
 	
 	# Apply gravity
-	if not is_on_floor or constantly_apply_gravity :
+	if not is_on_floor() or constantly_apply_gravity :
 		velocity += gravity_accel * delta_t * -up_direction
 	
 	# Player movement
@@ -113,7 +114,7 @@ func set_initial_velocity() -> void :
 	
 	accelerate(accel, wish_dir, wish_speed)
 	
-	if is_on_floor and jump_input_buffer.is_input_just_pressed() :
+	if is_on_floor() and jump_input_buffer.is_input_just_pressed() :
 		velocity += jump_impulse_length * up_direction
 
 
@@ -124,9 +125,9 @@ func apply_friction() -> void :
 	
 	var friction_speed : float = 0.0
 	
-	if is_on_floor :
+	if is_on_floor() :
 		friction_speed = ground_friction_speed
-	elif is_on_wall :
+	elif is_on_wall() :
 		friction_speed = wall_friction_speed
 	
 	# Adjust horizontal velocity

@@ -4,7 +4,7 @@
 [ext_resource type="Script" path="res://player/camera_controller.gd" id="2_k7urt"]
 [ext_resource type="Script" path="res://utilities/input_buffer.gd" id="3_xm4mr"]
 
-[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_2g0rf"]
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ousbn"]
 margin = 0.0
 
 [sub_resource type="LabelSettings" id="LabelSettings_l3nv4"]
@@ -23,9 +23,10 @@ axis_lock_angular_y = true
 axis_lock_angular_z = true
 script = ExtResource("1_k76p5")
 collider = NodePath("CollisionShape")
+_wall_min_slide_angle = 0.0
 
 [node name="CollisionShape" type="CollisionShape3D" parent="."]
-shape = SubResource("CapsuleShape3D_2g0rf")
+shape = SubResource("CapsuleShape3D_ousbn")
 
 [node name="PivotY" type="Node3D" parent="."]
 top_level = true

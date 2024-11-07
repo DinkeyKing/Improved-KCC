@@ -670,7 +670,7 @@ func floating_move(p_delta_t : float) -> void :
 	add_wall_and_ceiling_push_velocity()
 	
 	
-		# Process rigid body collisions
+	# Process rigid body collisions
 	if interact_with_rigid_bodies :
 		for collider_data in collider_datas :
 			var id : int = collider_data.collider_id
@@ -888,7 +888,7 @@ func move_and_slide_grounded(p_motion : Vector3, p_platform_pass : bool = false)
 	
 	# Strictly downward velocity will not move the body when on floor
 	# NOTE : This can save a slide iteration.
-	if floor_stop_on_slope and result_state.s_floor and (velocity.normalized() + up_direction).length() < 0.01 :
+	if floor_stop_on_slope and result_state.s_floor and (velocity.normalized() + up_direction).length_squared() < 0.0001 :
 		if travel.length() <= safe_margin + CMP_EPSILON :
 			global_position -= travel  # Revert motion
 		
@@ -1099,7 +1099,7 @@ func move_and_slide_grounded(p_motion : Vector3, p_platform_pass : bool = false)
 	if apply_default_sliding :
 		var slide_motion : Vector3 = new_motion.slide(collision_normal)
 		
-		if sliding_enabled:
+		if sliding_enabled or not is_on_floor:
 			# Try to keep horizontal motion direction when sliding on floor and not on wall
 			if result_state.s_floor and not result_state.s_wall and not horizontal_motion.is_zero_approx() :
 				# Slide using the intersection between the motion plane and the floor plane,
