@@ -7,7 +7,8 @@ I highly recommend using the Godot Jolt addon to make collision checks more accu
 Demo project includes example controllers and a test environment.
 
 ## Current status
-The script has all of the main features implemented and is in a mostly stable state. Bug fixes, optimisations, new features and other changes will be pushed to this repository when they are made.
+I'm currently working on a new implementation that uses the slide algorithm found in Quake, which means reacting to multiple planes during one slide iteration, which results in a more correct and robust collision response. \
+The API will most likely not change, and the old version will always be available.
 
 ## Motivation
 
@@ -43,7 +44,7 @@ when ```motion_mode``` is set to ```MotionMode.FLOATING```, or when ```floor_blo
 
 ## How to use
 - Optional, but recommended: set 3D physics engine implementation to Godot Jolt. (https://github.com/godot-jolt/godot-jolt)
-- Place 'ikcc.gd' somewhere in your project folder ('addons' folder for example).
+- Place 'ikcc.gd' somewhere in your project folder.
 - Your character controller scripts should be attached to ```CharacterBody3D``` nodes, like normal.
 - In your script, instead of extending ```CharacterBody3D```, extend the ```IKCC``` class.
 - Assign the character body's ```CollisionShape3D``` node to the ```collider``` property.
