@@ -1,5 +1,5 @@
 
-## Implements a complex 'move and slide' type collision response for character bodies.
+## Implements a kinematic/virtual character body.
 class_name IKCC
 extends PhysicsBody3D
 
@@ -11,21 +11,33 @@ extends PhysicsBody3D
 # -----------------------
 
 
-const MAX_SLIDES                : int   = 6        # Default: 6
-const MAX_SLIDE_COLLISIONS      : int   = 6        # Default: 6
-const MAX_SNAP_COLLISIONS       : int   = 6        # Default: 6
-const CMP_EPSILON               : float = 0.00001  # Default: 0.0001
-const ANGLE_CMP_EPSILON         : float = 0.01     # Default: 0.01
-const RAYCAST_OFFSET_LENGTH     : float = 0.001    # Default: 0.001
-const RECOVERY_FACTOR           : float = 2.0      # Default: 2.0
-const WALL_VERTICAL_APPROX_CMP  : float = 0.01     # Default: 0.01
+## The maximum slide iterations allowed.
+const MAX_SLIDES                : int   = 5             # Default: 5
+## The maximum collision reports per slide iteration.
+const MAX_SLIDE_COLLISIONS      : int   = 6             # Default: 6
+## The maximum collision reports per floor snaps.
+const MAX_SNAP_COLLISIONS       : int   = 4             # Default: 4
+## The maximum collision reports for motionless collision checks.
+const MAX_REST_COLLISIONS       : int   = 4             # Default: 4
+## The maximum number of constraint iterations
+const MAX_CONSTRAINT_ITERATIONS : int   = 7             # Default: 7 (Jolt's CharacterVirtual's is 15)
+## General epsilon used to compare floats.
+const CMP_EPSILON               : float = 0.00001       # Default: 0.00001
+## Epsilon used when checking if given planes are equal to each other.
+const PLANES_CMP_EPSILON        : float = 0.00001       # Default: 0.00001
+## Epsilon used when classifying collisions by the angle of their normals.
+const ANGLE_CMP_EPSILON         : float = 0.01          # Default: 0.01
+## Offset length used when offsetting raycasts.
+const RAYCAST_OFFSET_LENGTH     : float = 0.001         # Default: 0.001
+## The length of a recovery can approximately be no more than safe margin times this number.
+const RECOVERY_FACTOR           : float = 2.0           # Default: 2.0
+## The factor used to increase the safe margin for the final touch collision check.
+const TOUCH_SAFE_MARGIN_FACTOR  : float = 2.0           # Default: 2.0
 
-# INFO RECOVERY_FACTOR : The amount of recovery can be more than the safe margin,
-# so that has to be accounted for.
 
 ## Different modes for sliding collision response.
 enum MotionMode {
-	## Suitable for characters that move on the ground.
+	## Suitable for moving along the ground.
 	GROUNDED,
 	## Suitable for flying or swimming movement.
 	FLOATING
@@ -39,12 +51,6 @@ enum PlatformLeaveAction {
 	ADD_VELOCITY,
 	## Adds the last platform velocity without the downward component to [member velocity].
 	ADD_VELOCITY_NO_DOWNWARDS
-}
-
-enum FloorType {
-	NONE,
-	COLLISION,
-	SURFACE
 }
 
 
@@ -69,72 +75,79 @@ enum FloorType {
 @export var collider : CollisionShape3D
 
 @export_group("Floor")
-## If [code]true[/code], the body will be able to move on the floor only.
-## This option avoids to be able to walk on walls, it will however allow to slide down along them.
-@export var floor_block_on_wall : bool = true
-## If [code]false[/code], the [member velocity] will slide on the floor, instead of fully removing vertical velocity.
-## This is useful for slippery slopes.
-@export var floor_stop_on_slope : bool = true
-## If [code]true[/code], the body will move at a constant speed on floors, regardless of the slope. [br]
-## If [code]false[/code], the motion will slide on the floor, resulting in decreased speed,
-## and when going down slopes, snapping will cause an increased speed.
-@export var floor_constant_speed : bool = false
-## Sets a maximum snapping distance. When set to a value different from [code]0.0[/code], the body is kept attached to
-## slopes when calling [method move_and_slide]. The snapping vector is determined by the given distance
-## along the opposite direction of the [member up_direction].
-@export_range(0.0, 1.0, 0.01, "suffix:m") var max_snap_length : float = 0.26 :
-	set(value) : max_snap_length = absf(value)
 ## Maximum angle where a slope is still considered a floor (or a ceiling), rather than a wall.
 @export_range(0.0, 180.0, 0.1, "degrees")
-var _floor_max_angle : float = 45.0 :
+var floor_max_angle_degrees : float = 45.0 :
 	set (value) : 
 		floor_max_angle = value * (PI/180.0)  # Set radian variable
-		_floor_max_angle = value  # Set degree variable
+		floor_max_angle_degrees = value  # Set degree variable
+## If [code]true[/code], removes the sliding caused by the downward component of [member velocity] 
+## when landing from air onto a sloped floor. Additionally, [member velocity] will keep it's horizontal
+## direction when solving a floor constraint. (The horizontal plane is defined by
+## [member up_direction].) [br]
+## It's [b]important[/b] to note that if you want gravity and other downwards and towards the floor
+## accelerations to drag the body down on floor slopes, you should set this to [code]false[/code], 
+## (because keeping horizontal direction is undesired in that scenario)!
+@export var floor_stop_on_slope : bool = true
+## If [code]true[/code], [member velocity] will keep it's original magnitude when solving a floor
+## constraint.
+@export var floor_constant_speed : bool = false
+## Sets a maximum snapping distance. When set to a value different from [code]0.0[/code], the body is
+## kept attached to slopes when calling [method move_and_slide]. The snapping vector is determined by
+## the given distance along the opposite direction of the [member up_direction]. If the body snaps
+## to the floor, [member velocity] will be modified so that it parallels the floor plane.
+@export_range(0.0, 1.0, 0.01, "suffix:m") var max_snap_length : float = 0.26 :
+	set(value) : max_snap_length = absf(value)
+## If [member velocity] has a magnitude of at least [floor_detach_threshold] in the opposite
+## direction of a floor, the body will not snap to it, otherwise it won't.
+@export var floor_detach_threshold : float = 2.0
 
 @export_group("Wall")
-## If [code]true[/code], the [member velocity] will slide on walls, if the horizontal component is
-## looking away from the wall. This only matters when [member floor_block_on_wall] is [code]true[/code].
-@export var wall_slide_vertical_only_collision : bool = false
+## If [code]true[/code], the body will not slide up wall slopes when colliding with them on floor.
+@export var floor_block_on_wall : bool = true
 ## If the angle of a wall collision is smaller than this angle, the body will stop
-## instead of sliding. When [enum MotionMode] is set to [code]MotionMode.GROUNDED[/code], only the horizontal movement is affected.
-## If [member floor_block_on_wall] is [code]false[/code], this only affects collisions with fully vertical walls.
+## instead of sliding along it.
 @export_range(0.0, 180.0, 0.1, "degrees") 
-var _wall_min_slide_angle : float = 15.0 :
+var wall_min_slide_angle_degrees : float = 15.0 :
 	set (value) : 
 		wall_min_slide_angle = value * (PI/180.0)  # Set radian variable
-		_wall_min_slide_angle = value  # Set degree variable
+		wall_min_slide_angle_degrees = value  # Set degree variable
+## If [code]true[/code], [member velocity] will keep it's original magnitude when solving a wall
+## constraint. 
+@export var wall_constant_speed : bool = false
 
 @export_group("Ceiling")
-## If [code]false[/code], upwards [member velocity] and motion will be removed on ceiling collisions,
-## which prevents sliding up ceilings.
-@export var slide_on_ceiling : bool = true
+## If [code]false[/code], the body will not slide up ceilings.
+@export var slide_up_ceilings : bool = true
+## If [code]true[/code], [member velocity] will keep it's original magnitude when solving a ceiling
+## constraint. 
+@export var ceiling_constant_speed : bool = false
 
-@export_group("Moving Obstacles")
-## If [code]true[/code], the applied motion from the platform velocity will also follow the sliding behaviour,
+@export_group("Moving Platforms")
+## If [code]true[/code], the applied motion from [member platform_velocity] will also follow the sliding behaviour,
 ## instead of stopping on collisions.
 @export var slide_platform_motion : bool = true
 ## Sets the behavior to apply when you leave a moving platform. By default, to be physically accurate,
 ## when you leave the last platform velocity is applied. See [enum PlatformLeaveAction] constants for available behavior.
 @export var platform_leave_action := PlatformLeaveAction.ADD_VELOCITY
+## If the vertical platform velocity change is larger than this threshold, the body will detach
+## from the platform. Note that this only works if the leave velocity large enough to bypass
+## the floor snap. (See [member floor_detach_threshold].)
+@export var platform_detach_treshold : float = 1.0
 ## Collision layers that will be included for detecting floor bodies that will act as moving platforms
 ## to be followed by the body.
 @export_flags_3d_physics var moving_platform_layers : int = 1
-## Collision layers that will be included for detecting wall and ceiling bodies that will 
-## accelarate the body.
-@export_flags_3d_physics var moving_wall_and_ceiling_layers : int = 1
-## The character detaches from a moving platform, if the platform suddenly changes speed in the
-## opposite direction of it's movement vertical to it's surface, and the change in speed is larger
-## than this threshold.
-@export_range(0.01, 100, 0.01, "suffix:m/s") var platform_vertical_detach_threshold : float = 1.0 :
-	set(value) : platform_vertical_detach_threshold = maxf(0.0, value)
 
 @export_group("Stepping")
-## If [code]true[/code], the character can climb all kinds low geometry with floor surfaces, not just steps. [br]
-## [b]IMPORTANT NOTICE:[/b] To make stepping work for capsule and sphere colliders, this must be set to [code]true[/code]!
-@export var use_surface_normals : bool = true
-## Sets the maximum height of the steps (and other low obstacles) the character can climb.
+## Sets the maximum height of the walls the character can step on.
 @export_range(0.0, 1.0, 0.01, "suffix:m") var max_step_height : float = 0.26 :
 	set(value) : max_step_height = absf(value)
+## Sets the mimimum distance the character will move towards a wall when attempting to step on it.
+@export_range(0.0, 0.01, 0.001) var min_step_forward_distance : float = 0.001
+## If stepping will not result in the body landing on a floor, an additional test will be made to
+## see if there is floor further along the step direction, the distance to travel forward in this
+## test is [member step_floor_check_distance]. If a floor is found, the step move will be succesful. 
+@export_range(0.0, 0.5, 0.01) var step_floor_check_distance : float = 0.3
 
 @export_group("Rigid Body Interactions")
 ## If [code]false[/code], rigid bodies collisions will be treated as collisions with static bodies. [br]
@@ -142,45 +155,11 @@ var _wall_min_slide_angle : float = 15.0 :
 ## rigid bodies. In this case, it's [b]important[/b] that the collision mask of the rigid bodies that
 ## will be interacted with has the character's collision layer excluded!
 @export var interact_with_rigid_bodies : bool = true
-## The gravity acceleration used when applying a weight force.
-## The default value is read from the project settings.
-@export_range(0.0, 100, 0.01, "suffix:m/s^2") var gravity_acceleration : float = ProjectSettings.get_setting("physics/3d/default_gravity") :
-	set(value) : gravity_acceleration = absf(value)
 ## The mass of the character body.
 @export_range(0.001, 1000.0, 0.001, "suffix:kg") var mass : float = 1.0 :
 	set(value) : 
 		mass = maxf(CMP_EPSILON, value)
 		inverse_mass = 1.0 / mass
-## The body's bounciness (only applies to rigid body collisions). Values range from 0 (no bounce) to 1 (full bounciness).
-@export_range(0.0, 1.0, 0.01) var physics_material_bounce: float = 0.0 :
-	set(value) : physics_material_bounce = clampf(value, 0.0, 1.0)
-## If the character's horizontal distance from the rigid body platform's centre of mass is less than
-## this threshold, the applied impulse will always be central, meaning no tourqe is applied.
-@export_range(0.0, 64, 0.01, "suffix:m") var rigid_body_platform_central_impulse_threshold : float = 0.2 :
-	set(value) : rigid_body_platform_central_impulse_threshold = absf(value)
-## The fraction of the tourqe to be eliminated from the impulses applied to the rigid body platform,
-## when the resulting velocity from the collision impulse points upwards. [br]
-## This is used to get rid of the excessive rotations caused by the estimated impulses.
-@export_range(0.0, 1.0, 0.01) var rigid_body_platform_counter_torque_factor : float = 0.75 :
-	set(value) : rigid_body_platform_counter_torque_factor = clampf(value, 0.0, 1.0)
-## If the length difference between the previously picked up horizontal (friction) platform velocity
-## and the current platform's horizontal velocity exceeds this threshold, the horizontzal platform
-## velocity will be interpolated instead of instantly picked up. [br]
-## This useful for stopping excessive amounts of accelarations on rigid bodies. [br]
-## (Horizontal means horizontal relative to the platform surface.)
-@export_range(0.0, 64, 0.01, "suffix:m/s") var rigid_body_platform_horizontal_stick_threshold : float = 4.0 :
-	set(value) : rigid_body_platform_horizontal_stick_threshold = absf(value)
-## How fast to interpolate the friction component of the platform velocity to the actual velocity of the platform,
-## when the [member rigid_body_platform_horizontal_stick_threshold] is exceeded. Note that the physics
-## material of the rigid body also affects the interpolation speed.
-@export var rigid_body_platform_friction_strength : float = 1.0 :
-	set(value) : rigid_body_platform_friction_strength = absf(value)
-## If the length difference between the previously picked up vertical platform velocity
-## and the current platform's vertical velocity exceeds this threshold, the previous vertical
-## component is kept, meaning the character no longer sticks to the rigid body. [br]
-## (Vertical means vertical relative to the platform surface.)
-@export_range(0.01, 100, 0.01, "suffix:m/s") var rigid_body_platform_vertical_stick_threshold : float = 1.0 :
-	set(value) : rigid_body_platform_vertical_stick_threshold = absf(value)
 
 @export_group("Collision")
 ## Extra margin used for recovery and during slide collisons. [br] [br]
@@ -190,12 +169,9 @@ var _wall_min_slide_angle : float = 15.0 :
 ## detecting walls and floors. [br]
 ## A lower value forces the collision algorithm to use more exact detection, so it can be used in
 ## cases that specifically require precision, e.g at very low scale to avoid visible jittering,
-## or for stability with a stack of character bodies
-@export_range(0.001, 256.0, 0.001, "suffix:m") var safe_margin : float = 0.001 :
+## or for stability with a stack of character bodies.
+@export_range(0.001, 0.010, 0.001, "suffix:m") var safe_margin : float = 0.001 :
 	set(value) : safe_margin = absf(value)
-## Extra margin used for recovery when snapping to the floor.
-@export_range(0.001, 256.0, 0.001, "suffix:m") var snap_safe_margin : float = 0.001 :
-	set(value) : snap_safe_margin = absf(value)
 
 
 
@@ -206,40 +182,93 @@ var _wall_min_slide_angle : float = 15.0 :
 # --------------
 
 
+## [code]true[/code] if the body is touching a floor. Set during [method move_and_slide]. [br]
 var is_on_floor                     : bool
+## [code]true[/code] if the body is touching a wall. Set during [method move_and_slide].
 var is_on_wall                      : bool
+## [code]true[/code] if the body is touching a ceiling. Set during [method move_and_slide].
 var is_on_ceiling                   : bool
-var is_on_wall_floor                : bool
+## [code]true[/code] if the body collided with a floor. Set during [method move_and_slide].
+var collided_with_floor             : bool
+## [code]true[/code] if the body collided with a wall. Set during [method move_and_slide].
+var collided_with_wall              : bool
+## [code]true[/code] if the body collided with a ceiling. Set during [method move_and_slide].
+var collided_with_ceiling           : bool
+## [code]true[/code] if the body is touching a floor surface. Set during [method move_and_slide].
+var is_on_floor_surface             : bool
+## [code]true[/code] if the body performed a step move. Set during [method move_and_slide].
 var has_stepped                     : bool
+## [code]true[/code] if the body is touched a floor in the previous call to [method move_and_slide].
+## Set during [method move_and_slide].
 var prev_on_floor                   : bool
+## [code]true[/code] if the body is touched a floor surface in the previous call to [method move_and_slide].
+## Set during [method move_and_slide].
 var prev_on_floor_surface           : bool
-var prev_on_wall_floor              : bool
-var prev_had_floor_collider_saved   : bool
-var can_apply_constant_speed        : bool
-var sliding_enabled                 : bool
-var slide_count                     : int
+## [code]true[/code] if platform velocity was valid in the previous call to [method move_and_slide].
+var prev_platform_velocity_valid    : bool
+## The linear velocity of the body.
 var velocity                        : Vector3
+## The position delta divided by delta time.
+## Set during [method move_and_slide].
 var real_velocity                   : Vector3
-var prev_floor_normal               : Vector3
+## The travel vector from the last call to [method move_and_slide].
+var delta_position                  : Vector3
+## The normal of the deepest active floor collision. If the body is not touching a floor, it's a zero vector.
+## Set during [method move_and_slide].
 var current_floor_normal            : Vector3
+## The normal of the deepest active wall collision. If the body is not touching a wall, it's a zero vector.
+## Set during [method move_and_slide].
 var current_wall_normal             : Vector3
+## The normal of the deepest active ceiling collision. If the body is not touching a ceiling, it's a zero vector.
+## Set during [method move_and_slide].
 var current_ceiling_normal          : Vector3
+## The normal of the latest floor collision. If the body did not collide with a floor, it's a zero vector.
+## Set during [method move_and_slide].
+var last_floor_normal               : Vector3
+## The normal of the latest wall collision. If the body did not collide with a wall, it's a zero vector.
+## Set during [method move_and_slide].
+var last_wall_normal                : Vector3
+## The normal of the latest ceiling collision. If the body did not collide with a ceiling, it's a zero vector.
+## Set during [method move_and_slide].
+var last_ceiling_normal             : Vector3
+## The velocity of the floor collider at the position of the character body. If the body is not on
+## a floor, it's a zero vector.
+## Set during [method move_and_slide].
 var platform_velocity               : Vector3
+## The velocity the body hit the ground with arriving from air. If that didn't happen, it's a zero vector.
+## Set during [method move_and_slide].
 var floor_impact_velocity           : Vector3
-var remaining_floor_impact_velocity : Vector3
-var total_travel                    : Vector3
-var initial_motion_slide_up         : Vector3
+## The global position of the body before the latest call to [method move_and_slide].
+## Set during [method move_and_slide].
 var previous_position               : Vector3
+## Stores the id of the current floor collider the body is touching.
+## Set during [method move_and_slide].
 var current_floor_collider_encoded  : EncodedObjectAsID
-var current_floor_collider_data     : ColliderData
+## The RID of the current floor collider the body is touching.
+## Set during [method move_and_slide].
+var current_floor_collider_rid      : RID
+## An array of data objects that holds collision data sorted by colliders.
+## Set during [method move_and_slide].
 var collider_datas                  : Array[ColliderData]
-var collision_results               : Array[CollisionState]
+## An array of data objects that stores information about the collisions that happened
+## during the latest call to [method move_and_slide].
+## Does not include collision data of the final touch collision check and floor snaps.
+var collision_states                : Array[CollisionState]
+## ## The collision data of the latest floor snap.
+## Set during [method move_and_slide] and [method snap_to_floor].
+var snap_collision_state            : CollisionState
+## The collision data of the last collision check at the final position of the body.
+## Set during [method move_and_slide].
+var touch_collision_state           : CollisionState
 
-# Translate angle properties to radian
-@onready var wall_min_slide_angle : float = _wall_min_slide_angle * (PI/180.0)
-@onready var floor_max_angle      : float = _floor_max_angle * (PI/180.0)
+# Translate angle properties to radian when initialising
+## The minimum wall slide angle in radians.
+@onready var wall_min_slide_angle : float = wall_min_slide_angle_degrees * (PI/180.0)
+## The maximum wall angle in radians.
+@onready var floor_max_angle      : float = floor_max_angle_degrees * (PI/180.0)
 
 # Precalculate inverse mass
+## The inverse mass of the body.
 @onready var inverse_mass : float = 1.0 / mass
 
 
@@ -252,7 +281,7 @@ var collision_results               : Array[CollisionState]
 
 
 
-## Moves the body with the current velocity and the requested motion mode.
+## Call this in '_physics_process' to simulate body movement.
 ## Returns true if collision happened.
 func move_and_slide() -> bool :
 	# "Hack in order to work with calling from _process as well as from _physics_process; calling from thread is risky"
@@ -269,106 +298,150 @@ func move_and_slide() -> bool :
 	
 	# Save previous states
 	prev_on_floor = is_on_floor
-	prev_on_wall_floor = is_on_wall_floor
-	prev_floor_normal = current_floor_normal
+	prev_on_floor_surface = is_on_floor_surface
 	
 	# Reset state variables
+	collided_with_floor = false
+	collided_with_wall = false
+	collided_with_ceiling = false
 	is_on_floor = false
 	is_on_wall = false
 	is_on_ceiling = false
-	is_on_wall_floor = false
+	is_on_floor_surface = false
 	has_stepped = false
+	#last_floor_normal = Vector3.ZERO <-- We will read this later in grounded move, so don't clear it yet
+	last_wall_normal = Vector3.ZERO
+	last_ceiling_normal = Vector3.ZERO
 	current_floor_normal = Vector3.ZERO
 	current_wall_normal = Vector3.ZERO
 	current_ceiling_normal = Vector3.ZERO
-	collision_results.clear()
+	floor_impact_velocity = Vector3.ZERO
+	collision_states.clear()
+	collider_datas.clear()
+	snap_collision_state = null
+	touch_collision_state = null
+	
+	# Handle contacts before moving, and get their constraints
+	var pre_move_constraints : Array[KinematicConstraint] = handle_pre_move_contacts()
 	
 	# Move with requested motion mode
 	if motion_mode == MotionMode.GROUNDED :
-		grounded_move(delta_t)
+		grounded_move(delta_t, pre_move_constraints)
 	else :
-		floating_move(delta_t)
+		last_floor_normal = Vector3.ZERO
+		floating_move(delta_t, pre_move_constraints)
 	
 	# Add platform velocity if left floor
 	if platform_leave_action != PlatformLeaveAction.DO_NOTHING and not platform_velocity.is_zero_approx() and not current_floor_collider_encoded :
-		if platform_leave_action == PlatformLeaveAction.ADD_VELOCITY_NO_DOWNWARDS and platform_velocity.dot(up_direction) < 0.0 :
-			platform_velocity = platform_velocity.slide(up_direction)
+		if platform_leave_action == PlatformLeaveAction.ADD_VELOCITY_NO_DOWNWARDS :
+			platform_velocity -= minf(0.0, platform_velocity.dot(up_direction)) * up_direction
 		
 		velocity += platform_velocity
 		platform_velocity = Vector3.ZERO
 	
-	# Compute de facto velocity from new and old position
-	real_velocity = (global_position - previous_position) / delta_t
+	# Compute delta position and de facto velocity
+	delta_position = global_position - previous_position
+	real_velocity = delta_position / delta_t
 	
-	if collision_results.size() > 0 :
-		return true
+	# Handle contacts at final position
+	handle_contacts_at_final_position()
 	
-	return false
+	if collision_states.is_empty() and not touch_collision_state and not snap_collision_state :
+		return false
+	
+	return true
 
 
 
 
-## Snaps the character to the floor, if there is floor below within 'p_snap_length' meters away
-func snap_to_floor(p_snap_length : float) -> void :
-	
-	prev_on_floor_surface = false  # Set flag false by default
-	
-	# Already on floor, no need to snap
-	if is_on_floor :
-		return
-	
+## Snaps the character to the floor, if there is floor below within 'p_snap_length' meters away.
+func snap_to_floor(p_snap_length : float) -> bool :
 	# Snap by at least safe margin to keep floor state consistent
-	var snap_length : float = maxf(snap_safe_margin, p_snap_length)
+	var snap_length : float = maxf(safe_margin, p_snap_length)
 	
-	var collided    : bool
-	var snap_motion := -up_direction * snap_length
-	var m_result    := PhysicsTestMotionResult3D.new()
+	var collided      : bool
+	var snap_motion   := -up_direction * snap_length
+	var motion_result := PhysicsTestMotionResult3D.new()
+	var motion_params := PhysicsTestMotionParameters3D.new()
+	motion_params.from = global_transform
+	motion_params.motion = snap_motion
+	motion_params.margin = safe_margin
+	motion_params.recovery_as_collision = true
+	motion_params.max_collisions = MAX_SNAP_COLLISIONS
 	
-	collided = _move_and_collide(m_result, snap_motion, true, true, MAX_SNAP_COLLISIONS, false, snap_safe_margin)
+	# NOTE: Test only, because we only move the body if a floor collision happened
+	collided = _move_and_collide(motion_result, motion_params, true)
 	
 	if not collided :
-		return
+		return false
 	
+	var travel : Vector3 = motion_result.get_meta("travel", motion_result.get_travel()) as Vector3
 	var result_state := CollisionState.new()
+	set_collision_state(motion_result, result_state)
 	
-	set_collision_state(m_result, result_state)
-	
-	if not (result_state.s_floor) :
+	if not (result_state.s_floor or result_state.s_wall_floor) :
 		# Check surface normal, if it's floor, allow another snap attempt on next frame
 		# Fixes case when walking down step and reported collision normal is wall
 		# NOTE : This triggers the snap method more often, but makes snapping more reliable.
-		var feet_pos : Vector3 = get_feet_position()
-		var max_surface_height : float = feet_pos.dot(up_direction)
-		var floor_surface_found : bool = search_for_floor_surface_normal(m_result, max_surface_height)
-		if floor_surface_found :
-			prev_on_floor_surface = true
-		return
+		var snap_position : Vector3 = global_position + travel
+		if collided_with_floor_surface(result_state, snap_position) :
+			is_on_floor_surface = true
+		return false
 	
-	# Only set floor collision flag(s)
-	update_overall_state(result_state, true, false, false)
-	collision_results.append(result_state)
+	# Determine constraints for velocity, in order to make it parallel to floors,
+	# as to not move away from them
+	var kinematic_constraints : Array[KinematicConstraint]
+	for i : int in result_state.floor_collision_indexes :
+		var floor_normal : Vector3 = motion_result.get_collision_normal(i)
+		
+		# Filter out floors we are detaching from
+		var d : float = velocity.dot(floor_normal)
+		if d > floor_detach_threshold :
+			continue
+		
+		# Constant speed is applied, so only direction will be adjusted
+		# NOTE: This will redirect vertical velocity towards floor direction!
+		append_kinematic_constraint_if_unique_approx(
+			kinematic_constraints,
+			KinematicConstraint.new(-floor_normal, Vector3.ZERO, 0.0, true, true)
+		)
+	# Handle wall floors
+	if result_state.s_wall_floor :
+		var d : float = velocity.dot(result_state.wall_floor_normal)
+		if d < floor_detach_threshold :
+			append_kinematic_constraint_if_unique_approx(
+			kinematic_constraints,
+			KinematicConstraint.new(-result_state.wall_floor_normal, Vector3.ZERO, 0.0, true, true)
+		)
 	
-	var travel : Vector3 = m_result.get_travel()
+	var is_travel_significant : bool = travel.length_squared() > safe_margin**2
+	var detaching_from_floor : bool = kinematic_constraints.size() == 0
 	
-	# 'move_and_collide' may stray the body a bit because of pre un-stucking
-	# so only ensure that motion happens on floor direction in this case.
-	if travel.length() > snap_safe_margin :
-		travel = up_direction * up_direction.dot(travel)
-	else :
-		travel = Vector3.ZERO
+	# Update overall state
+	# NOTE: If floor is within safe margin, floor state is applied even if
+	# velocity is not facing the floor. We need this since floor snapping acts
+	# as the floor detector.
+	if not detaching_from_floor or (detaching_from_floor and not is_travel_significant) :
+		update_overall_state(result_state, true, false, false, true)
+		snap_collision_state = result_state
 	
-	# Don't slide down floor walls due to recovery when standing on them
-	# NOTE : Use the modified travel's length. Only apply, when wall floor normal is not 
-	# vertical up, to keep floor state consistent.
-	if result_state.s_wall_floor_support and up_direction.dot(result_state.floor_normal) < 1.0 - CMP_EPSILON and travel.length() < snap_safe_margin * RECOVERY_FACTOR + CMP_EPSILON :
-		travel = Vector3.ZERO
+	# If we are detaching from all floors, don't snap to floor
+	if detaching_from_floor :
+		return false
 	
-	global_position += travel
+	# Only move the body if we are not close enough already.
+	# INFO: This helps avoid sliding caused by recovery.
+	if is_travel_significant :
+		global_position += travel
+	
+	velocity = solve_kinematic_constraints(kinematic_constraints, velocity, up_direction)
+	
+	return true
 
 
 
 
-## Applies an impulse to the character body
+## Applies an impulse to the character body.
 func apply_impulse(p_impulse : Vector3) -> void :
 	velocity += p_impulse * inverse_mass
 
@@ -381,386 +454,1070 @@ func apply_impulse(p_impulse : Vector3) -> void :
 # -------------------
 
 
-## Performs the core logic of a grounded movement
-func grounded_move(p_delta_t : float) -> void :
+
+## Called before moving the body. Handles contacts at the starting position,
+## returns the constraints from these contacts.
+func handle_pre_move_contacts() -> Array[KinematicConstraint] :
+	# TODO: A better method is needed for checking shape intersections. Replace
+	# this collision check for that one, once available.
+	# Get current collisions before moving
+	# NOTE: Currently only the 'body_test_motion' (called inside _move_and_collide)
+	# is suitable for collision checks, since it's the only way to retrieve the necessary data of all contacts.
+	var pre_move_motion_result := PhysicsTestMotionResult3D.new()
+	var motion_params := PhysicsTestMotionParameters3D.new()
+	motion_params.from = global_transform
+	motion_params.motion = Vector3.ZERO
+	motion_params.margin = safe_margin
+	motion_params.recovery_as_collision = true
+	motion_params.max_collisions = MAX_REST_COLLISIONS
+	# Disable slide cancelling, because we are not moving the body
+	_move_and_collide(pre_move_motion_result, motion_params, true, false)
 	
-	# Get platform velocity
+	# Determine collision state with collisions from character motion ignored,
+	# only collisions resulting from motion of other bodies are registered.
+	var incoming_collision_state := CollisionState.new()
+	set_collision_state(pre_move_motion_result, incoming_collision_state, true)
+	collision_states.push_back(incoming_collision_state)
+	
+	# Update overall state with incoming collisions
+	if motion_mode == MotionMode.FLOATING :
+		update_overall_state(incoming_collision_state, false, true, false)
+	else :
+		update_overall_state(incoming_collision_state, true, true, true)
+	
+	# Determine constraints from this state
+	var kinematic_constraints : Array[KinematicConstraint]
+	var dynamic_constraints   : Array[DynamicConstraint]
+	if motion_mode == MotionMode.FLOATING :
+		determine_floating_move_constraints(
+			incoming_collision_state, kinematic_constraints, dynamic_constraints
+		)
+	else :
+		determine_grounded_move_constraints(
+			incoming_collision_state, kinematic_constraints, dynamic_constraints
+		)
+	
+	# Solve velocity for these constraints
+	velocity = solve_dynamic_constraints(dynamic_constraints, velocity, inverse_mass)
+	velocity = solve_kinematic_constraints(kinematic_constraints, velocity, up_direction)
+	
+	# Determine collision state with all current contacts before moving
+	var pre_move_collision_state := CollisionState.new()
+	set_collision_state(pre_move_motion_result, pre_move_collision_state, false)
+	# NOTE: The overall state is not updated with collisions that are not the
+	# result of motion from either the character, or other bodies. We register
+	# touching collision only at the final position.
+	
+	# Determine constraints from this state
+	# NOTE: The incoming collisions are a subset of the current contacts, so
+	# we can safely clear the array of constraints.
+	kinematic_constraints.clear()
+	
+	if motion_mode == MotionMode.FLOATING :
+		determine_floating_move_constraints(
+			pre_move_collision_state, kinematic_constraints, dynamic_constraints
+		)
+	else :
+		determine_grounded_move_constraints(
+			pre_move_collision_state, kinematic_constraints, dynamic_constraints
+		)
+	
+	return kinematic_constraints
+
+
+
+
+## Called when done moving, handles contacts at the final position.
+func handle_contacts_at_final_position() -> void :
+	# TODO: A better method is needed for checking shape intersections. Replace
+	# this collision check for that one, once available.
+	# Check for all current contacts at the final position
+	var touch_motion_result := PhysicsTestMotionResult3D.new()
+	var motion_params := PhysicsTestMotionParameters3D.new()
+	# NOTE: When getting touch collisions we need an inflated safe margin, because the character is
+	# pushed away from collisions, so it will no longer collide if we use the unaltered safe margin.
+	var touch_safe_margin : float = safe_margin * TOUCH_SAFE_MARGIN_FACTOR 
+	motion_params.from = global_transform
+	motion_params.motion = Vector3.ZERO
+	motion_params.margin = touch_safe_margin
+	motion_params.recovery_as_collision = true
+	motion_params.max_collisions = MAX_REST_COLLISIONS
+	# Disable slide cancelling, because we are not moving the body
+	_move_and_collide(touch_motion_result, motion_params, true, false)
+	
+	# Determine collision state with these contacts
+	touch_collision_state = CollisionState.new()
+	set_collision_state(touch_motion_result, touch_collision_state)
+	
+	# Update overall state and also set current state properties
+	if motion_mode == MotionMode.FLOATING :
+		update_overall_state(touch_collision_state, false, true, false, true)
+	else :  # Grounded move
+		# We don't want to set the floor status here, because floor snapping
+		# already determined the floor status
+		# FIXME: This does mean certain wall floors don't get detected...
+		update_overall_state(touch_collision_state, false, true, true, true)
+
+
+
+
+## Performs a grounded movement.
+func grounded_move(p_delta_t : float, p_pre_move_constraints : Array[KinematicConstraint]) -> void :
+	# Determine platform velocity
 	var prev_platform_velocity : Vector3 = platform_velocity
-	var current_floor_is_rigidbody : bool = false
-	var detach_from_platform : bool = false
+	var floor_collider_valid   : bool = false
 	platform_velocity = Vector3.ZERO
-	if current_floor_collider_encoded :
-		var floor_collider_object : Object = instance_from_id(current_floor_collider_encoded.object_id)
-		
-		if floor_collider_object is PhysicsBody3D :
-			var floor_collider := floor_collider_object as PhysicsBody3D
-			var platform_rid : RID = floor_collider.get_rid()
-			var excluded : bool = (moving_platform_layers & PhysicsServer3D.body_get_collision_layer(platform_rid)) == 0
+	if current_floor_collider_rid.is_valid() :
+		var platform_layer : int = PhysicsServer3D.body_get_collision_layer(current_floor_collider_rid)
+		var excluded : bool = (moving_platform_layers & platform_layer) == 0
+		if not excluded :
+			var body_state : PhysicsDirectBodyState3D = PhysicsServer3D.body_get_direct_state(current_floor_collider_rid)
+			var local_position : Vector3 = global_position - body_state.transform.origin
 			
-			if platform_rid.is_valid() and not excluded :
-				var platform_body_state : PhysicsDirectBodyState3D = PhysicsServer3D.body_get_direct_state(platform_rid)
-				
-				if platform_body_state :
-					var local_position : Vector3 = global_position - platform_body_state.transform.origin
-					platform_velocity = platform_body_state.get_velocity_at_local_position(local_position)
-					# NOTE : Static body constant velocity is also taken into account.
-					
-					if interact_with_rigid_bodies and floor_collider_object is RigidBody3D :
-						current_floor_is_rigidbody = true
-						
-						var rigidbody : RigidBody3D = floor_collider_object as RigidBody3D
-						var collision_normal : Vector3 = current_floor_collider_data.collision_normal
-						var horizontal_platform_velocity : Vector3 = platform_velocity.slide(collision_normal)
-						
-						# Handle push component
-						var platform_push_velocity : Vector3
-						var platform_impulse_data : CollisionImpulseData = calculate_impulse_from_collision(rigidbody, current_floor_collider_data, prev_platform_velocity + remaining_floor_impact_velocity + velocity, true)
-						if not platform_impulse_data.bodies_separating :
-							var impulse : Vector3 = platform_impulse_data.impulse
-							
-							platform_push_velocity = (prev_platform_velocity + remaining_floor_impact_velocity).dot(collision_normal) * collision_normal + (-impulse * inverse_mass)
-							apply_impulse_to_rb_platform(platform_impulse_data, rigidbody, platform_body_state)
-							
-						elif platform_impulse_data.relative_speed_towards_normal > rigid_body_platform_vertical_stick_threshold :
-							platform_push_velocity = (prev_platform_velocity + remaining_floor_impact_velocity).dot(collision_normal) * collision_normal # Keep previous vertical component
-							detach_from_platform = true  # Don't apply snap to floor later
-						else :
-							platform_push_velocity = platform_velocity - horizontal_platform_velocity  # Keep vertical stick component of platform velocity
-						
-						# Handle friction component
-						var platform_friction_velocity : Vector3 = horizontal_platform_velocity
-						var prev_platform_friction_velocity : Vector3 = prev_platform_velocity.slide(collision_normal)
-						# If friction velocity has turned around and is not too large, instantly pick up the new velocity
-						if not (platform_friction_velocity.dot(prev_platform_friction_velocity) < 0.0 and platform_friction_velocity.length_squared() < rigid_body_platform_horizontal_stick_threshold ** 2.0) :
-							var length_diff : float = absf((platform_friction_velocity - prev_platform_friction_velocity).length())
-							if length_diff > rigid_body_platform_horizontal_stick_threshold :
-								var lerp_weight : float = (rigidbody.physics_material_override.friction if rigidbody.physics_material_override else 1.0) * rigid_body_platform_friction_strength * p_delta_t
-								
-								platform_friction_velocity = prev_platform_friction_velocity.lerp(platform_friction_velocity, lerp_weight)
-						
-						# Combine push and friction components
-						platform_velocity = platform_push_velocity + platform_friction_velocity
-						
-						# Gravity is taken into account when moving upwards
-						var platform_velocity_facing_up : bool = platform_velocity.dot(up_direction) > 0.0
-						if platform_velocity_facing_up :
-							platform_velocity += gravity_acceleration * p_delta_t * -up_direction
-							
-							var platform_vel_dot_up : float = platform_velocity.dot(up_direction)
-							if platform_vel_dot_up < 0.0 :
-								platform_velocity -= platform_vel_dot_up * up_direction
-		
-		if not interact_with_rigid_bodies or not current_floor_is_rigidbody :
-			detach_from_platform = prev_had_floor_collider_saved and (prev_platform_velocity - platform_velocity).dot(prev_floor_normal) > platform_vertical_detach_threshold
+			platform_velocity = body_state.get_velocity_at_local_position(local_position)
 			
-			if detach_from_platform :
-				platform_velocity = platform_velocity.slide(prev_floor_normal) + prev_platform_velocity.dot(prev_floor_normal) * prev_floor_normal
-		
-		# FIXME : Because only one floor collider is taken into account,
-		# the transition between two floors with velocity can be jittery.
-		# To solve this, one needs to be definetively selected over the other, or their
-		# velocity need to be summed some way.
-		# Alternatively, one of the floors can be raised
-		# (or lowered) a little to get around this issue.
+			if prev_platform_velocity_valid :
+				var platform_vertical_velocity_change_length : float = (prev_platform_velocity - platform_velocity).dot(last_floor_normal)
+				if platform_vertical_velocity_change_length > platform_detach_treshold and prev_platform_velocity.dot(last_floor_normal) > floor_detach_threshold :
+					velocity += prev_platform_velocity
+					platform_velocity = Vector3.ZERO
+			
+			floor_collider_valid = true
 	
-	# Take axis lock into account for platform velocity
-	if axis_lock_linear_x :
-		platform_velocity.x = 0.0
-	if axis_lock_linear_y :
-		platform_velocity.y = 0.0
-	if axis_lock_linear_z :
-		platform_velocity.z = 0.0
+	prev_platform_velocity_valid = floor_collider_valid
 	
+	# Now we can clear last_floor_normal
+	last_floor_normal = Vector3.ZERO
 	
-	# Clear saved collision entity datas
-	prev_had_floor_collider_saved = current_floor_collider_encoded != null
-	current_floor_collider_encoded = null
-	
-	current_floor_collider_data = null 
-	collider_datas.clear()
-	
-	
-	# Get data of current collisions before moving
-	# HACK (EXTERNAL) : The method 'body_test_motion' (regardless of the physics server) does not work as advertised
-	# since it does not actually report the collisions from recoveries, so an extra call is needed
-	# unfortunately to get the current collisions before moving with move_and_slide.
-	var res := PhysicsTestMotionResult3D.new()
-	var rest_result_state := CollisionState.new()
-	_move_and_collide(res, Vector3.ZERO, true, true, MAX_SNAP_COLLISIONS, false, safe_margin, false)
-	set_collision_state(res, rest_result_state, true)
-	collision_results.append(rest_result_state)
-	update_overall_state(rest_result_state, true, true, true)
-	
-	var snap_on_platform : bool = is_on_floor
-	# NOTE: Slide velocity on floor later, when a moving platform collides with the character
-	# from below that is faster towards the collision normal than the character.
-	
-	
-	# Move with platform motion first
-	var platform_velocity_zero : bool = platform_velocity.is_zero_approx()
-	if not platform_velocity_zero :
-		
-		var platform_motion : Vector3 = platform_velocity * p_delta_t
-		
+	# Move with platform velocity
+	if not platform_velocity.is_zero_approx() :
 		if slide_platform_motion :
-			sliding_enabled = not floor_stop_on_slope
-			can_apply_constant_speed = sliding_enabled
-			slide_count = 0
-			total_travel = Vector3.ZERO
-			initial_motion_slide_up = platform_motion.slide(up_direction)
+			# Perform a sliding move with platform velocity
+			var platform_move_io := MoveShapeIO.new(global_transform, platform_velocity, p_delta_t)
+			move_shape(platform_move_io, prev_on_floor, p_pre_move_constraints,[current_floor_collider_rid])
 			
-			move_and_slide_grounded(platform_motion, true)
+			# Update position
+			global_transform = platform_move_io.transform
+			
+			# Update overall state with collisions
+			for collision_state : CollisionState in platform_move_io.collision_states :
+				collision_states.push_back(collision_state)
+				update_overall_state(collision_state, true, true, true)
 		else :
-			var platform_res := PhysicsTestMotionResult3D.new()
-			var platform_result_state := CollisionState.new()
+			# Move with platform velocity until collision
+			var motion_result : = PhysicsTestMotionResult3D.new()
+			var motion_params : = PhysicsTestMotionParameters3D.new()
+			motion_params.from = global_transform
+			motion_params.motion = platform_velocity * p_delta_t
+			motion_params.margin = safe_margin
+			motion_params.recovery_as_collision = true
+			motion_params.max_collisions = MAX_SLIDE_COLLISIONS
+			motion_params.exclude_bodies = [current_floor_collider_rid]
 			
-			_move_and_collide(platform_res, platform_motion, false, false, MAX_SLIDE_COLLISIONS, true, safe_margin, true)
-			set_collision_state(platform_res, platform_result_state)
-			collision_results.append(platform_result_state)
-			update_overall_state(platform_result_state, true, true, true)
-	
-	
-	# Move with motion
-	var motion : Vector3 = velocity * p_delta_t
-	sliding_enabled = not floor_stop_on_slope
-	can_apply_constant_speed = sliding_enabled
-	slide_count = 0
-	total_travel = Vector3.ZERO
-	initial_motion_slide_up = motion.slide(up_direction)
-	
-	move_and_slide_grounded(motion)
-	
-	
-	# Add velocity from moving walls and ceilings
-	add_wall_and_ceiling_push_velocity()
-	
-	
-	# Save floor impact velocity before snapping and sliding it
-	floor_impact_velocity = Vector3.ZERO
-	remaining_floor_impact_velocity = Vector3.ZERO
-	if is_on_floor and not prev_on_floor :
-		floor_impact_velocity = velocity
-	
-	
-	# Snap logic
-	var velocities_facing_up : bool = (velocity + platform_velocity).dot(up_direction) > CMP_EPSILON
-	var velocity_facing_up : bool = velocity.dot(up_direction) > CMP_EPSILON
-	
-	# Check if hit floor while sliding
-	var hit_floor_during_sliding : bool = false
-	for collision_state in collision_results :
-		if collision_state == rest_result_state :
-			continue
-		if collision_state.s_floor :
-			hit_floor_during_sliding = true
-			break
-	
-	var slid_velocity_on_floor : bool = false
-	if (not velocity_facing_up and not detach_from_platform) or snap_on_platform :
-		if (prev_on_floor or prev_on_floor_surface) and not hit_floor_during_sliding :
-			snap_to_floor(max_snap_length)
+			var collided : bool = _move_and_collide(motion_result, motion_params)
+			if collided :
+				var result_state := CollisionState.new()
+				set_collision_state(motion_result, result_state)
+				update_overall_state(result_state, true, true, true)
+				collision_states.push_back(result_state)
 		
-		if is_on_floor :
-			if floor_stop_on_slope :
-				velocity = velocity.slide(up_direction)  # Fully clip gravity
-			else :
-				velocity = velocity.slide(current_floor_normal)  # Slide down on slope
-			
-			slid_velocity_on_floor = true
+		# Clear pre move constraints, since we have moved
+		p_pre_move_constraints.clear()
 	
-	
-	# Process rigid body collisions
-	if interact_with_rigid_bodies :
-		for collider_data in collider_datas :
-			var id : int = collider_data.collider_id
-			if is_instance_id_valid(id) :
-				var collider_object : Object = instance_from_id(id)
-				if collider_object is RigidBody3D :
-					var rigidbody := collider_object as RigidBody3D
-					
-					# Handle wall and ceiling collisions
-					if collider_data.collision_type != ColliderData.CollisionType.FLOOR :
-						var impulse_data : CollisionImpulseData = calculate_impulse_from_collision(rigidbody, collider_data, velocity + platform_velocity)
-						if not impulse_data.bodies_separating :
-							var impulse : Vector3 = impulse_data.impulse
-							var impulse_position : Vector3 = impulse_data.impulse_position
-							
-							apply_impulse(-impulse)
-							rigidbody.apply_impulse(impulse, impulse_position)
-					
-					# Apply weight force and land impact impulse to floor rigid bodies
-					if collider_data.collision_type == ColliderData.CollisionType.FLOOR :
-						var rigidbody_body_state : PhysicsDirectBodyState3D = PhysicsServer3D.body_get_direct_state(rigidbody.get_rid())
-						
-						# Apply weight force
-						if not velocities_facing_up and prev_on_floor :
-							var avarage_collision_point : Vector3 = Math.calculate_vector3_array_avarage(collider_data.collision_points)
-							var collision_normal : Vector3 = collider_data.collision_normal
-							var normal_dot_up : float = collision_normal.dot(up_direction)
-							if normal_dot_up > 0.0 :
-								var relative_velocity : Vector3 = prev_platform_velocity - platform_velocity
-								var downward_relative_velocity : float = relative_velocity.dot(-up_direction)
-								if downward_relative_velocity > 0.0 :
-									var current_downward_accel : float = downward_relative_velocity / p_delta_t
-									if current_downward_accel < gravity_acceleration :
-										var accel_diff : float = gravity_acceleration - current_downward_accel
-										var impulse_length : float = mass * accel_diff * normal_dot_up * p_delta_t
-										var impulse : Vector3 = impulse_length * -up_direction
-										var impulse_position : Vector3 = avarage_collision_point - rigidbody.global_position
-										
-										rigidbody.apply_impulse(impulse, impulse_position)
-						
-						# Apply floor impact impulse
-						if not prev_on_floor :
-							var impact_impulse_data : CollisionImpulseData = calculate_impulse_from_collision(rigidbody, collider_data, floor_impact_velocity)
-							if not impact_impulse_data.bodies_separating :
-								var impulse : Vector3 = impact_impulse_data.impulse
-								
-								remaining_floor_impact_velocity = floor_impact_velocity + (-impulse * inverse_mass)
-								
-								if remaining_floor_impact_velocity.dot(up_direction) > 0.0 :
-									# Apply impulse with counter torque only if the resulting velocity points upwards
-									apply_impulse_to_rb_platform(impact_impulse_data, rigidbody, rigidbody_body_state)
-								else :
-									# Apply impulse without counter torque
-									var impulse_position : Vector3 = impact_impulse_data.impulse_position
-									rigidbody.apply_impulse(impulse, impulse_position)
-	
-		# Keep floor state stable when pushing bodies on ground
-		if slid_velocity_on_floor :
-			if floor_stop_on_slope :
-				velocity = velocity.slide(up_direction)  # Fully clip gravity
-			else :
-				velocity = velocity.slide(current_floor_normal)  # Slide down on slope
-
-
-
-
-## Performs the core logic of a floating movement
-func floating_move(p_delta_t : float) -> void :
-	
-	# Clear saved collision entity datas
-	prev_had_floor_collider_saved = current_floor_collider_encoded != null
+	# Clear floor collider data
 	current_floor_collider_encoded = null
+	current_floor_collider_rid = RID()
 	
-	current_floor_collider_data = null 
-	collider_datas.clear()
+	# Move with velocity
+	var move_io := MoveShapeIO.new(global_transform, velocity, p_delta_t)
+	move_shape(move_io, prev_on_floor, p_pre_move_constraints)
 	
+	# Update position and velocity
+	global_transform = move_io.transform
+	velocity = move_io.velocity
 	
-	# Get data of current collisions before moving
-	# HACK (EXTERNAL) : The method 'body_test_motion' (regardless of the physics server) does not work as advertised
-	# since it does not actually report the collisions from recoveries, so an extra call is needed
-	# unfortunately to get the current collisions before moving with move_and_slide.
-	var res := PhysicsTestMotionResult3D.new()
-	var result_state := CollisionState.new()
-	_move_and_collide(res, Vector3.ZERO, true, true, MAX_SNAP_COLLISIONS, false, safe_margin, false)
-	set_collision_state(res, result_state)
-	collision_results.append(result_state)
-	update_overall_state(result_state, false, true, false)
+	# Update overall state with collisions
+	for collision_state : CollisionState in move_io.collision_states :
+		collision_states.push_back(collision_state)
+		update_overall_state(collision_state, true, true, true)
 	
+	# Set step status flag and floor impact velocity
+	has_stepped = move_io.has_stepped
+	floor_impact_velocity = move_io.floor_impact_velocity
 	
-	# Move with motion
-	var motion : Vector3 = velocity * p_delta_t
-	slide_count = 0
+	# Snap to floor if character was on the floor in the previous frame, or has
+	# touched floor during movement.
+	if prev_on_floor or move_io.touched_floor or prev_on_floor_surface :
+		snap_to_floor(max_snap_length)
 	
-	move_and_slide_floating(motion)
-	
-	
-	# Add velocity from moving walls and ceilings
-	add_wall_and_ceiling_push_velocity()
-	
-	
-	# Process rigid body collisions
+	# Apply gravity force to floor collider
 	if interact_with_rigid_bodies :
-		for collider_data in collider_datas :
-			var id : int = collider_data.collider_id
-			if is_instance_id_valid(id) :
-				var collider_object : Object = instance_from_id(id)
-				if collider_object is RigidBody3D :
-					var rigidbody := collider_object as RigidBody3D
-					var impulse_data : CollisionImpulseData = calculate_impulse_from_collision(rigidbody, collider_data, velocity + platform_velocity)
-					if not impulse_data.bodies_separating :
-						var impulse : Vector3 = impulse_data.impulse
-						var impulse_position : Vector3 = impulse_data.impulse_position
-						
-						apply_impulse(-impulse)
-						rigidbody.apply_impulse(impulse, impulse_position)
+		apply_gravity_force_to_floor(p_delta_t)
 
 
 
 
-## Adds the push velocity from moving walls and ceiling
-func add_wall_and_ceiling_push_velocity() -> void :
-	var wall_push_velocity := Vector3.ZERO
-	for collider_data : ColliderData in collider_datas :
-		if collider_data.collision_type == ColliderData.CollisionType.FLOOR :
+## Applies gravity force to the floor collider.
+func apply_gravity_force_to_floor(p_delta_t : float) -> void :
+	if not (current_floor_collider_encoded and is_body_dynamic(current_floor_collider_rid)) :
+		return
+	
+	# Create dynamic constraints
+	var index : int = ColliderData.find_by_collider_id(collider_datas, current_floor_collider_encoded.object_id)
+	var floor_collider_data : ColliderData = collider_datas[index]
+	var dynamic_constraints : Array[DynamicConstraint]
+	for i : int in floor_collider_data.collision_count :
+		dynamic_constraints.push_back(
+			DynamicConstraint.new(
+				floor_collider_data.collider_rid,
+				floor_collider_data.collision_normals[i],
+				floor_collider_data.collision_points[i]
+			)
+		)
+	
+	# Calculate velocity from gravity acceleraation
+	var gravity_velocity : Vector3 = get_gravity() * p_delta_t
+	# We have to take platform velocity into account
+	
+	gravity_velocity += platform_velocity * (
+		# If the floor platform is "pulling", reverse the added velocity
+		-1.0 if platform_velocity.dot(up_direction) < 0.0 else 1.0
+		)
+	
+	# Apply the impulses
+	solve_dynamic_constraints(dynamic_constraints, gravity_velocity, inverse_mass)
+
+
+
+
+## Performs a floating movement.
+func floating_move(p_delta_t : float, p_pre_move_constraints : Array[KinematicConstraint]) -> void :
+	
+	# Clear floor collider data
+	current_floor_collider_encoded = null
+	current_floor_collider_rid = RID()
+	
+	# Move with velocity
+	var move_io := MoveShapeIO.new(global_transform, velocity, p_delta_t)
+	move_shape(move_io, prev_on_floor, p_pre_move_constraints)
+	
+	# Update position and velocity
+	global_transform = move_io.transform
+	velocity = move_io.velocity
+	
+	# Update overall state with collisions
+	for collision_state : CollisionState in move_io.collision_states :
+		collision_states.push_back(collision_state)
+		update_overall_state(collision_state, false, true, false)
+
+
+
+
+## Simulates body movement using collision checks.
+func move_shape(
+	p_io                         : MoveShapeIO,
+	p_prev_on_floor              : bool,
+	p_prev_kinematic_constraints : Array[KinematicConstraint] = [],
+	p_excluded_bodies            : Array[RID] = [],
+	p_step_move_enabled          : bool = true
+	) -> void :
+	# Check if done maximum allowed amount of iterations
+	if p_io.iteration_count > MAX_SLIDES :
+		# NOTE : this shouldn't happen
+		printerr("IKCC: Max slides surpassed! (%d)" % MAX_SLIDES)
+		return
+	
+	# If simulation time provided is zero (or less), treat it as an error and bail
+	if is_zero_approx(p_io.time_remaining) or p_io.time_remaining <= 0.0 :
+		printerr("IKCC: Simulation time provided to 'move_shape' is zero!")
+		return
+	
+	# Increase iteration counter
+	p_io.iteration_count += 1
+	
+	# Perform recovery, move body along motion, stop if collided
+	var motion        : Vector3 = p_io.velocity * p_io.time_remaining
+	var motion_result :         = PhysicsTestMotionResult3D.new()
+	var motion_params :         = PhysicsTestMotionParameters3D.new()
+	motion_params.from = p_io.transform
+	motion_params.motion = motion
+	motion_params.margin = safe_margin
+	motion_params.recovery_as_collision = true
+	motion_params.max_collisions = MAX_SLIDE_COLLISIONS
+	motion_params.exclude_bodies = p_excluded_bodies
+	var collided : bool = _move_and_collide(motion_result, motion_params, true)
+	
+	# Modify output position by adding the safe fraction of the motion
+	var travel : Vector3 = motion_result.get_meta("travel", motion_result.get_travel()) as Vector3
+	p_io.transform.origin += travel
+	
+	# Reduce remaining time by time spent moving
+	p_io.time_remaining -= p_io.time_remaining * motion_result.get_collision_safe_fraction()
+	
+	if not collided :
+		return  # Moved all the way, no collision to respond to
+	
+	# Calculate collision info
+	var result_state := CollisionState.new()
+	set_collision_state(motion_result, result_state)
+	
+	# Store collision info
+	p_io.collision_states.push_back(result_state)
+	
+	if motion.is_zero_approx() :
+		return  # Motion was zero, no need to slide
+	
+	# Determine constraints
+	var kinematic_constraints : Array[KinematicConstraint] = []
+	var dynamic_constraints   : Array[DynamicConstraint]   = []
+	
+	# Only add previous constraints if we haven't moved a significant amount
+	# NOTE: Recovery can be more than the safe margin, we have to take it into account.
+	var is_travel_significant : bool = travel.length_squared() > (safe_margin * RECOVERY_FACTOR)**2
+	if not is_travel_significant :
+		kinematic_constraints += p_prev_kinematic_constraints
+	
+	# Remember floor stauts of this iteration (Only used for grounded movement.)
+	# If collision includes floor, we can set this to true and skip the floor collision check.
+	var touching_floor : bool = result_state.s_floor or result_state.s_wall_floor
+	
+	if motion_mode == MotionMode.FLOATING :
+		determine_floating_move_constraints(result_state, kinematic_constraints, dynamic_constraints)
+	else :  # Grounded motion mode
+		var floor_below : bool = result_state.s_floor
+		var floor_surface_below : bool = false
+		var floor_check_travel := Vector3.ZERO
+		
+		# If no floor collision is reported, we need an extra collision check at our current position.
+		if not touching_floor :
+			var floor_state := CollisionState.new()
+			if check_floor_status(p_io.transform, max_step_height, floor_state, true) :
+				floor_below = floor_state.s_floor or floor_state.s_wall_floor
+				floor_surface_below = floor_state.s_floor_surface_only
+				floor_check_travel = floor_state.motion_result.get_meta("travel", floor_state.motion_result.get_travel()) as Vector3
+				# NOTE: Recovery can be more than the safe margin, we have to take it into account.
+				touching_floor = floor_below and floor_check_travel.length_squared() <= (safe_margin * RECOVERY_FACTOR)**2
+		
+		# Set flag if we are touching the floor
+		p_io.touched_floor = p_io.touched_floor or touching_floor
+		
+		# Check if we collided with a step
+		if p_step_move_enabled and not is_zero_approx(max_step_height) and (floor_below or floor_surface_below) and result_state.s_wall :
+			# Retrieve IO objects of forward move, in case step move fails
+			var step_forward_ios : Array[MoveShapeIO]
+			if step_move(p_io, result_state, p_excluded_bodies, step_forward_ios) :
+				# The character succesfully stepped with remaning time, so we are out of it.
+				return
+			# If the step move failed, cancel any impulse applied to bodies during the forward move
+			for move_shape_io : MoveShapeIO in step_forward_ios :
+				move_shape_io.restore_body_states()
+		
+		# Determine if we want to block horizontal movement on steep slopes
+		var slide_up_steep_slopes : bool = not (floor_block_on_wall and touching_floor and result_state.s_wall)
+		
+		# If floor check distance is not too much, we apply it to the body's position,
+		# in order to make floor status more reliable when sliding along steep slopes
+		if not slide_up_steep_slopes and touching_floor :
+			p_io.transform.origin += floor_check_travel
+		
+		determine_grounded_move_constraints(
+			result_state, kinematic_constraints, dynamic_constraints, slide_up_steep_slopes, slide_up_ceilings
+		)
+	
+	# The user may wish to know the velocity the character hit the ground with, so save it
+	var landed_from_air : bool = not p_prev_on_floor and result_state.s_floor
+	if landed_from_air and p_io.floor_impact_velocity.is_zero_approx() :
+		p_io.floor_impact_velocity = p_io.velocity
+	
+	# Determine new velocity
+	var new_velocity : Vector3 = p_io.velocity
+	
+	# This feature prevents sliding caused by accumulated velocity from gravity
+	# when landing on sloped floors.
+	# NOTE: Disabling gravity when on floor is the user's responsibility!
+	# When the character lands on the floor from air...
+	if floor_stop_on_slope and landed_from_air :
+		# and vertical component would cause sliding down the slope...
+		if p_io.velocity.dot(up_direction) < 0.0 :
+			# First remove downward vertical (gravity) component...
+			new_velocity = p_io.velocity.slide(up_direction)
+			
+			# ... then adjust current velocity so that it parallels the floor planes, by
+			# solving the constraints defined below.
+			var floor_dir_constraints : Array[KinematicConstraint]
+			for i : int in result_state.floor_collision_indexes :
+				var floor_normal : Vector3 = motion_result.get_collision_normal(i)
+				
+				# Constant speed is applied, so only direction will be adjusted.
+				append_kinematic_constraint_if_unique_approx(
+					floor_dir_constraints,
+					KinematicConstraint.new(-floor_normal, Vector3.ZERO, 0.0, true, true)
+				)
+			
+			new_velocity = solve_kinematic_constraints(floor_dir_constraints, new_velocity, up_direction)
+	
+	# Solve constraints
+	new_velocity = solve_dynamic_constraints(dynamic_constraints, new_velocity, inverse_mass, p_io)
+	new_velocity = solve_kinematic_constraints(kinematic_constraints, new_velocity, up_direction)
+	
+	# Set new output velocity
+	p_io.velocity = new_velocity
+	
+	# Cancel motion caused by recovery, when needed
+	if not is_travel_significant :
+		var cancelled_travel := Vector3.ZERO
+		for constraint : KinematicConstraint in kinematic_constraints :
+			if constraint.is_slide_cancelled :
+				var travel_horizontal_to_plane : Vector3 = travel.slide(constraint.plane_normal)
+				cancelled_travel += travel_horizontal_to_plane
+				travel -= travel_horizontal_to_plane
+				constraint.is_slide_cancelled = false  # reset flag
+		# Modify output position
+		p_io.transform.origin -= cancelled_travel
+	
+	if new_velocity.is_zero_approx() :
+		return # There's not enough velocity left
+	
+	# Stop simulating if new velocity still faces a constraint plane
+	for constraint : Constraint in (kinematic_constraints + dynamic_constraints) as Array[Constraint] :
+		if new_velocity.dot(constraint.plane_normal) <= -CMP_EPSILON :
+			return
+	
+	if is_zero_approx(p_io.time_remaining) :
+		return  # Not enough time left to be simulated, bail
+	
+	# Iterate
+	move_shape(
+		p_io,
+		touching_floor,
+		kinematic_constraints,
+		p_excluded_bodies,
+		p_step_move_enabled
+	)
+
+
+
+
+## Determines constraints for floating movement according to input collision state.
+func determine_floating_move_constraints(
+	p_collision_state       : CollisionState,
+	p_kinematic_constraints : Array[KinematicConstraint],
+	p_dynamic_constraints   : Array[DynamicConstraint]
+	) -> void :
+	# NOTE: All collisions are walls if motion mode is floating.
+	for i : int in p_collision_state.wall_collision_indexes :
+		var wall_normal   : Vector3 = p_collision_state.motion_result.get_collision_normal(i)
+		var wall_velocity : Vector3 = p_collision_state.motion_result.get_collider_velocity(i)
+		var collider_rid  : RID     = p_collision_state.motion_result.get_collider_rid(i)
+		
+		if interact_with_rigid_bodies and is_body_dynamic(collider_rid) :
+			var collision_point : Vector3 = p_collision_state.motion_result.get_collision_point(i)
+			p_dynamic_constraints.push_back(DynamicConstraint.new(collider_rid, wall_normal, collision_point))
 			continue
 		
-		var id : int = collider_data.collider_id
+		append_kinematic_constraint_if_unique_approx(
+			p_kinematic_constraints,
+			KinematicConstraint.new(wall_normal, wall_velocity, wall_min_slide_angle, wall_constant_speed)
+		)
+
+
+
+
+## Determines constraints for grounded movement according to input collision state.
+func determine_grounded_move_constraints(
+	p_collision_state       : CollisionState,
+	p_kinematic_constraints : Array[KinematicConstraint],
+	p_dynamic_constraints   : Array[DynamicConstraint] = [],
+	p_slide_up_steep_slopes : bool = true,
+	p_slide_up_ceilings     : bool = true,
+	) -> void :
+	# Floor collisions
+	for i : int in p_collision_state.floor_collision_indexes :
+		var floor_normal   : Vector3 = p_collision_state.motion_result.get_collision_normal(i)
 		
-		if is_instance_id_valid(id) :
-			var wall_collider_object : Object = instance_from_id(id)
-			
-			if wall_collider_object is StaticBody3D or wall_collider_object is AnimatableBody3D :
-				var wall_collider := wall_collider_object as PhysicsBody3D
-				var wall_rid : RID = wall_collider.get_rid()
-				var excluded : bool = (moving_wall_and_ceiling_layers & PhysicsServer3D.body_get_collision_layer(wall_rid)) == 0
+		# We don't add the collider velocity to the floor constraint,
+		# since floor movement is handled through platform_velocity.
+		# We also treat all floor constraints as kinematic.
+		append_kinematic_constraint_if_unique_approx(
+			p_kinematic_constraints,
+			KinematicConstraint.new(floor_normal, Vector3.ZERO, 0.0, floor_constant_speed, floor_stop_on_slope)
+		)
+	
+	# Wall collisions
+	for i : int in p_collision_state.wall_collision_indexes :
+		var wall_normal   : Vector3 = p_collision_state.motion_result.get_collision_normal(i)
+		var wall_velocity : Vector3 = p_collision_state.motion_result.get_collider_velocity(i)
+		var collider_rid  : RID     = p_collision_state.motion_result.get_collider_rid(i)
+		
+		if interact_with_rigid_bodies and is_body_dynamic(collider_rid) :
+			var collision_point : Vector3 = p_collision_state.motion_result.get_collision_point(i)
+			p_dynamic_constraints.push_back(DynamicConstraint.new(collider_rid, wall_normal, collision_point))
+			continue
+		
+		# Convert to constraint
+		var wall_constraint := KinematicConstraint.new(wall_normal, wall_velocity, wall_min_slide_angle, wall_constant_speed)
+		
+		# If not allowed to slide up slopes, add an additional constraint that
+		# holds the character back
+		if not p_slide_up_steep_slopes :
+			# Jolt: "Only take planes that point up."
+			var dot : float = wall_normal.dot(up_direction)
+			if dot > CMP_EPSILON :
+				# Jolt: "Make horizontal normal"
+				var horizontal_normal : Vector3 = (wall_normal - dot * up_direction).normalized()
+				# Jolt: "Project the contact velocity on the new normal so that both planes push at an equal rate"
+				var projected_velocity : Vector3 = wall_velocity.dot(horizontal_normal) * horizontal_normal
 				
-				if wall_rid.is_valid() and not excluded:
-					var wall_body_state : PhysicsDirectBodyState3D = PhysicsServer3D.body_get_direct_state(wall_rid)
-					if wall_body_state :
-						var local_position : Vector3 = global_position - wall_body_state.transform.origin
-						var wall_velocity  : Vector3 = wall_body_state.get_velocity_at_local_position(local_position)
-						var wall_normal    : Vector3 = collider_data.collision_normal
-						
-						# Skip if wall normal is not facing the wall's velocity or wall velocity is zero
-						var wall_velocity_dot_normal : float = wall_velocity.dot(wall_normal)
-						if wall_velocity.is_zero_approx() or wall_velocity_dot_normal < 0.0 :
-							continue
-						
-						# Apply less velocity, the less the wall is facing it's velocity
-						wall_push_velocity += wall_velocity_dot_normal * wall_normal
-	
-	# Modify velocity wall push velocity
-	if not wall_push_velocity.is_zero_approx() :
-		var push_dir      : Vector3 = wall_push_velocity.normalized()
-		var wished_speed  : float   = wall_push_velocity.length()
-		var current_speed : float   = (velocity + platform_velocity).dot(push_dir)  # Also account for platform velocity
+				# Jolt: "Create a secondary constraint that blocks horizontal movement"
+				append_kinematic_constraint_if_unique_approx(
+					p_kinematic_constraints,
+					KinematicConstraint.new(horizontal_normal, projected_velocity, wall_min_slide_angle, wall_constant_speed)
+				)
 		
-		if current_speed < wished_speed :
-			var velocity_to_add : Vector3 = (wished_speed - current_speed) * push_dir
+		append_kinematic_constraint_if_unique_approx(p_kinematic_constraints,wall_constraint)
+	
+	# Ceiling collisions
+	for i : int in p_collision_state.ceiling_collision_indexes :
+		var ceiling_normal : Vector3 = p_collision_state.motion_result.get_collision_normal(i)
+		var ceiling_velocity : Vector3 = p_collision_state.motion_result.get_collider_velocity(i)
+		var collider_rid  : RID     = p_collision_state.motion_result.get_collider_rid(i)
+		
+		if interact_with_rigid_bodies and is_body_dynamic(collider_rid) :
+			var collision_point : Vector3 = p_collision_state.motion_result.get_collision_point(i)
+			p_dynamic_constraints.push_back(DynamicConstraint.new(collider_rid, ceiling_normal, collision_point))
+			continue
+		
+		# Create a secondary constraint that blocks upward movement
+		if not p_slide_up_ceilings :
+			var down_normal : Vector3 = -up_direction
+			var projected_velocity : Vector3 = ceiling_velocity.dot(down_normal) * down_normal
 			
-			velocity += velocity_to_add
+			append_kinematic_constraint_if_unique_approx(
+					p_kinematic_constraints,
+					KinematicConstraint.new(down_normal, projected_velocity, 0.0, ceiling_constant_speed)
+				)
+		
+		append_kinematic_constraint_if_unique_approx(
+			p_kinematic_constraints,
+			KinematicConstraint.new(ceiling_normal, ceiling_velocity, 0.0, ceiling_constant_speed)
+		)
 
 
 
 
-## Does a motion test, setting the given result object, optionally adjusts motion to cancel sliding, 
-## optionally moves the body to the end position, returns true if collision happened.
+## Appends the given kinematic constraint to the given array if none of the constraints
+## in the array are approximately equal to it.
+static func append_kinematic_constraint_if_unique_approx(
+	p_constraints : Array[KinematicConstraint],
+	p_constraint  : KinematicConstraint
+	) -> bool :
+	for other_constraint : KinematicConstraint in p_constraints :
+		var equal_component_count : int = 0
+		for i : int in 3 :
+			if p_constraint.plane_normal[i] > other_constraint.plane_normal[i] - PLANES_CMP_EPSILON and p_constraint.plane_normal[i] < other_constraint.plane_normal[i] + PLANES_CMP_EPSILON :
+				equal_component_count += 1
+			else : 
+				break
+		if equal_component_count == 3 and other_constraint.velocity.is_equal_approx(p_constraint.velocity) :
+			return false
+	p_constraints.push_back(p_constraint)
+	return true
+
+
+
+
+## Solves kinematic constraints.
+static func solve_kinematic_constraints(
+	p_constraints  : Array[KinematicConstraint],
+	p_velocity     : Vector3,
+	p_up_direction : Vector3
+	) -> Vector3 :
+	var new_velocity    : Vector3 = p_velocity  # if the velocity does not need modifying, the original is returned
+	var last_velocity   : Vector3 = p_velocity
+	var numplanes       : int     = p_constraints.size()
+	var iteration_count : int  # Keep track for debugging
+	
+	# If there are no constraints, return input velocity
+	if numplanes == 0:
+		return p_velocity
+	
+	# INFO: This is a modified version of the algorithm found in Jolt's CharacterVirtual.cpp
+	for i : int in MAX_CONSTRAINT_ITERATIONS :
+		iteration_count = i
+		
+		# Get the constraint we violate the most
+		var constraint : KinematicConstraint = get_constraint_with_highest_penetration(p_constraints, new_velocity)
+		
+		if not constraint :
+			break  # new velocity does not violate any constraints
+		
+		# Solve velocity on this contraint
+		new_velocity = solve_constraint(new_velocity, constraint, p_up_direction)
+		
+		# Find the constraint we will violate the most if we move in this new direction
+		var other_constraint : KinematicConstraint = null
+		var highest_penetration : float = CMP_EPSILON
+		for c : KinematicConstraint in p_constraints :
+			if c == constraint :
+				continue
+				
+			var penetration : float = (c.velocity - new_velocity).dot(c.plane_normal)
+			if penetration > highest_penetration :
+				# Jolt: "We don't want parallel or anti-parallel normals as that will cause our
+				# cross product below to become zero. Slack is approx 10 degrees."
+				var dot : float = c.plane_normal.dot(constraint.plane_normal)
+				if dot < 0.984 and dot > -0.984 :
+					highest_penetration = penetration
+					other_constraint = c
+		
+		if other_constraint :
+			# Jolt: "Cancel the constraint velocity in the other constraint plane's direction so that we won't try to apply it again and keep ping ponging between planes"
+			# ... but only if the constraint velocity is pushing.
+			if constraint.velocity.dot(constraint.plane_normal) >= 0.0 :
+				constraint.velocity -= minf(0.0, constraint.velocity.dot(other_constraint.plane_normal)) * other_constraint.plane_normal
+			if other_constraint.velocity.dot(other_constraint.plane_normal) >= 0.0 :
+				other_constraint.velocity -= minf(0.0, other_constraint.velocity.dot(constraint.plane_normal)) * constraint.plane_normal
+			
+			# If applying one constaint velocity solves the other's, don't add them together to avoid duplicate push velocity
+			var combined_constraint_velocity : Vector3
+			if (constraint.velocity - other_constraint.velocity).dot(other_constraint.plane_normal) >= -CMP_EPSILON :
+				combined_constraint_velocity = constraint.velocity
+			elif (other_constraint.velocity - constraint.velocity).dot(constraint.plane_normal) >= -CMP_EPSILON :
+				combined_constraint_velocity = other_constraint.velocity
+			else :
+				combined_constraint_velocity = constraint.velocity + other_constraint.velocity
+			
+			# Calculate relative velocity in the crease direction
+			var slide_dir : Vector3 = constraint.plane_normal.cross(other_constraint.plane_normal).normalized()
+			var relative_velocity : Vector3 = new_velocity - combined_constraint_velocity
+			var relative_velocity_in_slide_dir : Vector3 = relative_velocity.dot(slide_dir) * slide_dir
+			
+			# Handle constant speed feature, if the other constraint needs it
+			# NOTE: If only the first is marked, than we already handled it previously,
+			# because we are projecting the new velocity onto the crease.
+			if other_constraint.constant_speed :
+				if constraint.constant_speed :
+					# If both constrains are marked, modify the projected relative velocity to have the original's length
+					relative_velocity_in_slide_dir = relative_velocity_in_slide_dir.normalized() * relative_velocity.length()
+				else :
+					# If only the other constraint is marked, make relative velocity parallel to the marked
+					# constraint without changeing its length, than project that onto the crease direction.
+					var constraint_slide_dir : Vector3 = relative_velocity.slide(other_constraint.plane_normal).normalized()
+					var constraint_slide_vel : Vector3 = constraint_slide_dir * relative_velocity.length()
+					
+					relative_velocity_in_slide_dir = constraint_slide_vel.dot(slide_dir) * slide_dir
+			
+			# Add all components together
+			new_velocity = relative_velocity_in_slide_dir + combined_constraint_velocity
+		
+		if new_velocity.is_zero_approx():
+			break
+		
+		# Jolt: "If the constraint has velocity we accept the new velocity, otherwise
+		# check that we didn't reverse velocity"
+		# NOTE: This solves triple plane interactions, where we've lost all 3
+		# degrees of freedom.
+		if not constraint.velocity.is_zero_approx() :
+			last_velocity = constraint.velocity
+		elif new_velocity.dot(last_velocity) < 0.0 :
+			return Vector3.ZERO  # Stop dead if velocity turned around. (No more degrees of freedom left.)
+	
+	# Check if we reached maximum amount of iterations. Maximum value may have to be increased
+	# for complex scenarios.
+	if iteration_count == MAX_CONSTRAINT_ITERATIONS - 1 :
+		printerr('IKCC: Looped for maximum amount of constraint iterations. (%d)' % MAX_CONSTRAINT_ITERATIONS)
+	
+	return new_velocity
+
+
+
+
+## Solves a single constraint.
+static func solve_constraint(
+	p_velocity     : Vector3,
+	p_constraint   : KinematicConstraint,
+	p_up_direction : Vector3
+	) -> Vector3 :
+	var relative_velocity : Vector3 = p_velocity - p_constraint.velocity
+	
+	# Handle min angle feature
+	if is_angle_too_perpendicular(p_constraint.plane_normal, p_constraint.min_slide_angle, relative_velocity) :
+		p_constraint.is_slide_cancelled = true
+		return p_constraint.velocity
+	
+	# Handle special cases where direction and length needs to be calculated differently
+	if p_constraint.constant_speed or p_constraint.keep_horizontal_dir :
+		var slide_dir : Vector3
+		var slide_length : float
+		
+		if p_constraint.keep_horizontal_dir :
+			# Slide using the intersection of input velocity and the constraint plane
+			slide_dir = p_up_direction.cross(relative_velocity).cross(p_constraint.plane_normal).normalized()
+			# If the plane normal is pointing downward, we need to reverse it
+			if p_constraint.plane_normal.dot(p_up_direction) < 0.0 :
+				slide_dir *= -1
+		else :
+			slide_dir = relative_velocity.slide(p_constraint.plane_normal).normalized()
+		
+		if p_constraint.constant_speed :
+			# Keep original length
+			slide_length = relative_velocity.length()
+		else :
+			slide_length = relative_velocity.slide(p_constraint.plane_normal).length()
+		
+		return slide_dir * slide_length + p_constraint.velocity
+	
+	# Calculate new velocity if we cancel the relative velocity in the normal direction
+	var new_velocity : Vector3 = p_velocity - relative_velocity.dot(p_constraint.plane_normal) * p_constraint.plane_normal
+	
+	return new_velocity
+
+
+
+
+## Determines if slide angle is too steep or not on a given plane.
+static func is_angle_too_perpendicular(
+	p_plane_normal    : Vector3,
+	p_min_slide_angle : float,
+	p_velocity        : Vector3
+	) -> bool :
+	if not p_min_slide_angle :
+		return false  # no minimum angle is given
+	
+	# Calculate the cosine of the angle between velocity and plane normal
+	var cosine_angle: float = p_velocity.normalized().dot(p_plane_normal)
+	var cosine_min_slide_angle: float = cos(p_min_slide_angle)
+	
+	if absf(cosine_angle) > cosine_min_slide_angle :
+		return true  # angle is too perpendicular
+	
+	return false
+
+
+
+
+## Returns the constraint that the input velocity violates the most.
+## Returns null, if the input velocity doesn't interact with any input constraint.
+static func get_constraint_with_highest_penetration(
+	p_constraints : Array[KinematicConstraint],
+	p_velocity    : Vector3
+	) -> KinematicConstraint :
+	var constraint : KinematicConstraint = null
+	var highest_penetration : float = CMP_EPSILON
+	for c : KinematicConstraint in p_constraints :
+		var penetration : float = (c.velocity - p_velocity).dot(c.plane_normal)
+		if penetration > highest_penetration :
+			highest_penetration = penetration
+			constraint = c
+	return constraint
+
+
+
+
+## Solves dynamic constraints.
+static func solve_dynamic_constraints(
+		p_constraints  : Array[DynamicConstraint],
+		p_velocity     : Vector3,
+		p_inverse_mass : float,
+		p_io           : MoveShapeIO = null
+	) -> Vector3 :
+	var new_velocity : Vector3 = p_velocity  # if velocity is not facing any plane, return original
+	
+	# Check and store how many collisions we have per body
+	var bodies_collision_counts : Dictionary
+	for constraint in p_constraints :
+		var rid_id : int = constraint.collider_rid.get_id()
+		if bodies_collision_counts.has(rid_id) :
+			bodies_collision_counts[rid_id] += 1
+		else :
+			bodies_collision_counts[rid_id] = 1
+	
+	for constraint : DynamicConstraint in p_constraints :
+		var body_state := PhysicsServer3D.body_get_direct_state(constraint.collider_rid)
+		
+		var normal : Vector3 = -constraint.plane_normal
+		
+		var m1_inv : float   = p_inverse_mass
+		var m2_inv : float   = body_state.inverse_mass
+		var I2_inv : Vector3 = body_state.inverse_inertia
+		
+		var r2 : Vector3 = constraint.collision_point - body_state.transform.origin
+		
+		var v1     : Vector3 = new_velocity
+		var v2     : Vector3 = body_state.linear_velocity
+		var omega2 : Vector3 = body_state.angular_velocity
+		
+		var relative_velocity : Vector3 = (v2 + omega2.cross(r2)) - v1
+		var v_rel_norm        : float   = relative_velocity.dot(normal)
+		
+		if v_rel_norm > 0.0 :
+			continue
+		
+		var restitution : float = 0.0
+		
+		var j_denom : float   = (m1_inv) + (m2_inv) + (normal.dot((r2.cross(normal) * I2_inv).cross(r2)))
+		var j       : float   = -(1.0 + restitution) * v_rel_norm / j_denom
+		var impulse : Vector3 = j * normal
+		
+		# Divide impulse by how many collisions happened with the given body
+		impulse /= bodies_collision_counts[constraint.collider_rid.get_id()]
+		
+		new_velocity -= impulse * p_inverse_mass
+		
+		# Save the originhal state of the body
+		if p_io and not BodySaveState.array_contains_rid(p_io.body_save_states, constraint.collider_rid) :
+			p_io.body_save_states.push_back(
+				BodySaveState.new(
+					constraint.collider_rid,
+					body_state.linear_velocity,
+					body_state.angular_velocity
+				)
+			)
+		
+		body_state.apply_impulse(impulse, r2)
+	
+	return new_velocity
+
+
+
+
+## Checks if the body is at least the given distance away downward from a floor collision or surface.
+## Sets the given CollisionState object.
+func check_floor_status(
+	p_from                     : Transform3D,
+	p_check_distance           : float,
+	p_result_state             : CollisionState,
+	p_check_for_surface_normal : bool = false
+	) -> bool :
+	var check_distance : float   = maxf(safe_margin, p_check_distance)
+	var test_motion    : Vector3 = -up_direction * check_distance
+	var motion_result  :         = PhysicsTestMotionResult3D.new()
+	var motion_params  :         = PhysicsTestMotionParameters3D.new()
+	motion_params.from = p_from
+	motion_params.motion = test_motion
+	motion_params.margin = safe_margin
+	motion_params.recovery_as_collision = true
+	motion_params.max_collisions = MAX_SNAP_COLLISIONS
+	# We are only testing in this function, but we might apply the travel outside, so enable slide cancelling
+	var collided : bool = _move_and_collide(motion_result, motion_params, true, true)
+	
+	if not collided :
+		return false
+	
+	set_collision_state(motion_result, p_result_state)
+	
+	if p_result_state.s_floor or p_result_state.s_wall_floor :
+		return true
+	
+	if p_check_for_surface_normal and p_result_state.s_wall and collided_with_floor_surface(p_result_state, p_from.origin) :
+		p_result_state.s_floor_surface_only = true
+		return true
+	
+	return false
+
+
+
+
+
+## Attempts to perform a step move, and if it succeeds, set's the output data and returns true.
+func step_move(
+	p_io              : MoveShapeIO,
+	p_collision_state : CollisionState,
+	p_excluded_bodies : Array[RID] = [],
+	step_forward_ios  : Array[MoveShapeIO] = []
+	) -> bool :
+	var horizontal_velocity : Vector3 = p_io.velocity.slide(up_direction)
+	
+	if horizontal_velocity.is_zero_approx() :
+		return false  # We won't step if our horizontal velocity is near zero
+	
+	# Collect wall normals we are pushing into, and determine extra forward motion needed
+	var wall_normals : PackedVector3Array
+	# NOTE: We need to move towards the walls with at least the safe margin
+	# (because it is possible we've hit a wall only with the safe margin inflated shape),
+	# and also some little amount, so that we can reach on the top of the ledge.
+	var min_forward_length : float = (safe_margin + min_step_forward_distance)
+	var base_forward_motion : Vector3 = horizontal_velocity * p_io.time_remaining
+	var extra_forward_motion := Vector3.ZERO
+	for i : int in p_collision_state.wall_collision_indexes :
+		var wall_velocity : Vector3 = p_collision_state.motion_result.get_collider_velocity(i)
+		var wall_normal : Vector3 = p_collision_state.motion_result.get_collision_normal(i)
+		if (horizontal_velocity - wall_velocity).dot(wall_normal) < 0.0 :
+			wall_normals.push_back(wall_normal)
+			
+			var horizontal_wall_normal : Vector3 = wall_normal.slide(up_direction).normalized()
+			var motion_length_towards_wall : float = -(base_forward_motion + extra_forward_motion).dot(horizontal_wall_normal)
+			extra_forward_motion += maxf(0.0, min_forward_length - motion_length_towards_wall) * -horizontal_wall_normal
+	
+	if wall_normals.is_empty() :
+		return false  # There are no walls we are pushing into, bail
+	
+	# UP
+	var step_move_transform : Transform3D = p_io.transform
+	var up_motion_result := PhysicsTestMotionResult3D.new()
+	var up_motion_params := PhysicsTestMotionParameters3D.new()
+	up_motion_params.from = step_move_transform
+	up_motion_params.motion = up_direction * max_step_height
+	up_motion_params.margin = safe_margin
+	up_motion_params.recovery_as_collision = false
+	up_motion_params.max_collisions = 0
+	_move_and_collide(up_motion_result, up_motion_params, true)
+	# NOTE : We only need the travel of the motion, so no collision report is needed.
+	
+	# See how much we travelled up
+	var up_travel := up_motion_result.get_meta("travel", up_motion_result.get_travel()) as Vector3
+	var up_travel_length : float = up_travel.dot(up_direction)
+	if up_travel_length <= safe_margin :
+		return false  # We couldn't move up a significant distance, bail
+	
+	# Update step move position with upward travel
+	step_move_transform.origin += up_travel
+	var up_transform : Transform3D = step_move_transform
+	
+	# FORWARD
+	# Move with the extra forward motion if needed,
+	# so that the forward move travels at least the minimum distance
+	if not extra_forward_motion.is_zero_approx() :
+		# NOTE: v = s / t, if t = 1, then v = s
+		var extra_forward_move_io := MoveShapeIO.new(step_move_transform, extra_forward_motion, 1.0)
+		move_shape(extra_forward_move_io, false, [],  p_excluded_bodies, false)
+		# Update step move position
+		step_move_transform = extra_forward_move_io.transform
+		# Store reference to IO
+		step_forward_ios.push_back(extra_forward_move_io)
+	
+	# Remember this position
+	var offsetted_up_transform : Transform3D = step_move_transform
+	
+	# Move with horizontal velocity, using the remaining time
+	var forward_move_io := MoveShapeIO.new(step_move_transform, horizontal_velocity, p_io.time_remaining)
+	if not is_zero_approx(p_io.time_remaining) :
+		move_shape(forward_move_io, false, [], p_excluded_bodies, false)
+		# Update step move position
+		step_move_transform = forward_move_io.transform
+		# Store reference to IO
+		step_forward_ios.push_back(forward_move_io)
+	
+	# Check if we made progress towards any of the walls
+	var made_progress : bool = false
+	var forward_move_travel : Vector3 = step_move_transform.origin - up_transform.origin
+	for wall_normal : Vector3 in wall_normals :
+		if wall_normal.dot(forward_move_travel) < -safe_margin :
+			made_progress = true
+			break
+	if not made_progress :
+		return false
+	
+	# DOWN
+	var down_motion_result := PhysicsTestMotionResult3D.new()
+	var down_motion_params := PhysicsTestMotionParameters3D.new()
+	down_motion_params.from = step_move_transform
+	# NOTE: We move down the same amount we moved up.
+	down_motion_params.motion = -up_direction * up_travel_length
+	down_motion_params.margin = safe_margin
+	down_motion_params.recovery_as_collision = true
+	down_motion_params.max_collisions = MAX_SNAP_COLLISIONS
+	
+	if not _move_and_collide(down_motion_result, down_motion_params, true) :
+		return false  # In the air, stepping failed
+	
+	# Update step move position with downward travel
+	var down_travel := down_motion_result.get_meta("travel", down_motion_result.get_travel()) as Vector3
+	step_move_transform.origin += down_travel
+	
+	var down_result_state := CollisionState.new()
+	set_collision_state(down_motion_result, down_result_state)
+	
+	# Check if downward move collided with a floor
+	if not down_result_state.s_floor :
+		# Ground normal is too steep, test at a further distance to see if there is floor further
+		# along the ground
+		# Default check direction is the inverted horizontal steep ground normal we landed on
+		# Use the wall surface normal if available
+		var ground_normal : Vector3 = down_result_state.deepest_wall_normal
+		var floor_check_forward_dir : Vector3 = -ground_normal.slide(up_direction).normalized()
+		# If wall surface normal is available, we use it for the step angle check, so we can
+		# better single out the problematic step scenarios and we don't have to set the angle
+		# threshold to a value above zero.
+		# Because collision could be a corner, we only use the surface normal for the angle check
+		# and not for the forward floor check direction.
+		var wall_surface_normal : Vector3 = get_wall_surface_normal_below(down_result_state, horizontal_velocity)
+		var step_compare_dir    : Vector3 = (
+			-wall_surface_normal.slide(up_direction).normalized()
+			if not wall_surface_normal == Vector3.ZERO
+			else floor_check_forward_dir
+		)
+		# If the horizontal velocity does not face this direction, we use the horizontal velocity
+		# direction instead of the ground normal.
+		var horizontal_velocity_dir : Vector3 = horizontal_velocity.normalized()
+		if horizontal_velocity_dir.dot(step_compare_dir) < 0.0 :
+			floor_check_forward_dir = horizontal_velocity_dir
+		# Set length to the preset value
+		var floor_check_forward_motion : Vector3 = floor_check_forward_dir * step_floor_check_distance
+		
+		# Move forward with this motion
+		var floor_check_forward_io := MoveShapeIO.new(offsetted_up_transform, floor_check_forward_motion, 1.0)
+		move_shape(floor_check_forward_io, false, [], p_excluded_bodies, false)
+		
+		# Move down
+		var floor_check_down_result := PhysicsTestMotionResult3D.new()
+		down_motion_params.from = floor_check_forward_io.transform
+		if _move_and_collide(floor_check_down_result, down_motion_params, true) :
+			
+			# INFO: Debug draw to visualize where the floor check lands
+			#DebugDraw3D.draw_sphere(down_motion_result.get_meta("travel", down_motion_result.get_travel()) as Vector3 + floor_check_forward_io.transform.origin, 0.2)
+			
+			var floor_check_result_state := CollisionState.new()
+			set_collision_state(floor_check_down_result, floor_check_result_state)
+			if not floor_check_result_state.s_floor :
+				return false  # No stable floor found
+		else :
+			return false  # In the air
+	
+	# Step detected, check step height
+	var step_height : float = (step_move_transform.origin - p_io.transform.origin).dot(up_direction)
+	if is_zero_approx(step_height) :
+		return false  # If we are on the same level, we didn't step
+	
+	# Move to final position
+	p_io.transform.origin = step_move_transform.origin + safe_margin * up_direction
+	# Set remaining time to zero, since we have used up the remaining time with the step move,
+	# or we didn't have any to begin with
+	p_io.time_remaining = 0.0
+	# Update velocity with the output horizontal move velocity, and add back the upwards component
+	# of the original velocity
+	p_io.velocity = forward_move_io.velocity + maxf(0.0, p_io.velocity.dot(up_direction)) * up_direction
+	# Append forward move collision states
+	p_io.collision_states.append_array(forward_move_io.collision_states)
+	# Set step flag
+	p_io.has_stepped = true
+	
+	return true
+
+
+
+
+## Does a motion test, sets the given result object, optionally adjusts travel to cancel sliding
+## caused by recovery, optionally moves the body to the end position,
+## returns true if collision happened.
+## It's important to note that collision check method 'body_test_motion' discards contacts
+## that the motion doesn't face (sometimes not if it's parallel to the surface)!
 # NOTICE : The built in 'move_and_collide' does not suffice because :
-# - Slide cacelling can't be turned off
-# - The returned KinematicCollision3D object provides too little information about the collision
-func _move_and_collide(p_res : PhysicsTestMotionResult3D, p_motion : Vector3, p_test_only : bool = false, p_rec : bool = false, p_max_col : int = 1, p_cancel_sliding : bool = false, p_margin : float = safe_margin, p_platform_pass : bool = false) -> bool :
-	var params := PhysicsTestMotionParameters3D.new()
-	
-	params.motion = p_motion
-	params.from = global_transform
-	params.margin = p_margin
-	params.max_collisions = p_max_col
-	params.recovery_as_collision = p_rec
-	
-	# Exclude platform object, when applying platform motion
-	if p_platform_pass and current_floor_collider_encoded :
-		params.exclude_objects = [current_floor_collider_encoded.object_id]
-	
-	var collided      : bool = PhysicsServer3D.body_test_motion(self, params, p_res)
+# - Slide cancelling can't be turned off.
+# - The returned KinematicCollision3D object provides too little information about the collision.
+func _move_and_collide(
+	p_res                      : PhysicsTestMotionResult3D,
+	p_params                   : PhysicsTestMotionParameters3D,
+	p_test_only                : bool  = false,
+	p_cancel_sliding           : bool  = true
+	) -> bool :
+	var collided      : bool = PhysicsServer3D.body_test_motion(self, p_params, p_res)
 	var travel        : Vector3 = p_res.get_travel()
 	var modify_travel : bool = false 
 	
-	
 	# Cancel sliding caused be recovery, if needed
 	if p_cancel_sliding :
-		var motion_length : float = p_motion.length()
+		var motion_length : float = p_params.motion.length()
 		var precision     : float = CMP_EPSILON
 		
 		# No slide cancel if collision depth is too large
@@ -778,7 +1535,7 @@ func _move_and_collide(p_res : PhysicsTestMotionResult3D, p_motion : Vector3, p_
 			var motion_normal : Vector3
 			
 			if motion_length > CMP_EPSILON :
-				motion_normal = p_motion / motion_length
+				motion_normal = p_params.motion / motion_length
 			
 			# Check depth of recovery
 			var projected_length : float   = travel.dot(motion_normal)
@@ -798,9 +1555,9 @@ func _move_and_collide(p_res : PhysicsTestMotionResult3D, p_motion : Vector3, p_
 	if axis_lock_linear_z : travel.z = 0.0
 	
 	if modify_travel :
-		# Set meta data with modified results (Because setting the properties is not possible.)
+		# Set meta data with modified results (Because the result object is read-only in GDScript.)
 		p_res.set_meta("travel", travel)
-		p_res.set_meta("remainder", p_motion - travel)
+		p_res.set_meta("remainder", p_params.motion - travel)
 	
 	if not p_test_only :
 		global_position += travel
@@ -810,551 +1567,92 @@ func _move_and_collide(p_res : PhysicsTestMotionResult3D, p_motion : Vector3, p_
 
 
 
-## 'move and slide' collision response for the grounded movement
-func move_and_slide_grounded(p_motion : Vector3, p_platform_pass : bool = false) -> void :
+## Updates the overall state with the given collision state, assuming it's the latest.
+func update_overall_state(
+	p_col_state       : CollisionState,
+	p_set_floor       : bool,
+	p_set_wall        : bool,
+	p_set_ceiling     : bool,
+	p_set_final_state : bool = false
+	) -> void :
 	
-	# Done maximum allowed amount of iterations
-	# NOTE : this shouldn't really happen, 6 slides should be enough for most cases
-	if slide_count > MAX_SLIDES :
-		slide_count = MAX_SLIDES  # Set accurate value for debugging
-		return
-	
-	var m_result := PhysicsTestMotionResult3D.new()
-	
-	# No sliding on first attempt to avoid sliding down on slopes due to recovery motion
-	# NOTICE : This can causes an extra iteration when colliding with floor!
-	# INFO : Using a safe margin larger than 0 can cause the character to slowly slide down slopes,
-	# because the recovery motion will push the character directly away from the surface, 
-	# which is not straight up in the case of slopes.
-	# Make sure sliding is enabled after first iteration
-	if not sliding_enabled and slide_count > 0 :
-		sliding_enabled = true
-	
-	# Perform recovery, move body along motion, stop if collided
-	var collided : bool = _move_and_collide(m_result, p_motion, false, true, MAX_SLIDE_COLLISIONS, not sliding_enabled, safe_margin, p_platform_pass)
-	
-	# Moved all the way, no collision to respond to
-	if not collided :
-		# Apply constant speed when moving down slope, if needed
-		var _new_motion : Vector3
-		if floor_constant_speed and slide_count == 0 and on_floor_if_snapped(velocity.dot(up_direction) > 0.0) :
-			var _travel : Vector3 = m_result.get_meta("travel") if m_result.has_meta("travel") else m_result.get_travel()
-			var motion_slide_norm : Vector3 = up_direction.cross(p_motion).cross(prev_floor_normal).normalized()
+	# Floor
+	if p_set_floor and p_col_state.s_floor :
+		collided_with_floor = true
+		last_floor_normal = p_col_state.deepest_floor_normal
+		
+		if p_set_final_state :
+			# Store floor collider
+			if not current_floor_collider_encoded :
+				current_floor_collider_encoded = EncodedObjectAsID.new()
+			current_floor_collider_encoded.object_id = p_col_state.motion_result.get_collider_id(p_col_state.deepest_floor_index)
+			current_floor_collider_rid = p_col_state.motion_result.get_collider_rid(p_col_state.deepest_floor_index)
 			
-			global_position -= _travel
-			_new_motion = motion_slide_norm * p_motion.slide(up_direction).length()
-			collided = true
+			is_on_floor = true
+			current_floor_normal = p_col_state.deepest_floor_normal
+	
+	# Wall
+	if p_set_wall and p_col_state.s_wall :
+		collided_with_wall = true
+		last_wall_normal = p_col_state.deepest_wall_normal
 		
-		if not collided or _new_motion.is_zero_approx() :
-			return
+		if p_set_final_state :
+			is_on_wall = true
+			current_wall_normal = p_col_state.deepest_wall_normal
+	
+	# Ceiling
+	if p_set_ceiling and p_col_state.s_ceiling :
+		collided_with_ceiling = true
+		last_ceiling_normal = p_col_state.deepest_ceiling_normal
 		
-		# New iteration
-		slide_count += 1
-		move_and_slide_grounded(_new_motion, p_platform_pass)
-		return
+		if p_set_final_state :
+			is_on_ceiling = true
+			current_ceiling_normal = p_col_state.deepest_ceiling_normal
 	
-	var result_state := CollisionState.new()
-	
-	# Store info about collision
-	set_collision_state(m_result, result_state)
-	collision_results.append(result_state)
-	
-	# Update state with collision
-	var prev_iteration_on_wall : bool = is_on_wall
-	update_overall_state(result_state, true, true, true)
-	
-	# Motion was zero, no need to slide
-	if p_motion.is_zero_approx() :
-		return
-	
-	
-	# Set new motion for next iteration, also modify velocity
-	var apply_default_sliding : bool    = true
-	var velocity_facing_up    : bool    = velocity.dot(up_direction) > 0.0
-	var horizontal_motion     : Vector3 = p_motion.slide(up_direction)
-	var collision_normal      : Vector3 = m_result.get_collision_normal(0)  # Get deepest collision normal
-	var remaining_motion      : Vector3
-	var travel                : Vector3
-	
-	# Get the modified values caused by slide cancelling if needed
-	if not sliding_enabled and m_result.has_meta("travel") and m_result.has_meta("remainder") :
-		remaining_motion = m_result.get_meta("remainder")
-		travel = m_result.get_meta("travel")
-	else :
-		remaining_motion = m_result.get_remainder()
-		travel = m_result.get_travel()
-	
-	var new_motion : Vector3 = remaining_motion
-	
-	# Strictly downward velocity will not move the body when on floor
-	# NOTE : This can save a slide iteration.
-	if floor_stop_on_slope and result_state.s_floor and (velocity.normalized() + up_direction).length_squared() < 0.0001 :
-		if travel.length() <= safe_margin + CMP_EPSILON :
-			global_position -= travel  # Revert motion
+	# Wall-floor
+	# NOTE : Wall-floors are only registered in collision state,
+	# if collision includes no regular floor contacts, so that doesn't need to be checked here.
+	if p_set_floor and p_col_state.s_wall_floor :
+		collided_with_floor = true
+		last_floor_normal = p_col_state.wall_floor_normal
 		
-		var collided_with_rigidbody : bool = interact_with_rigid_bodies and m_result.get_collider(result_state.deepest_floor_index) is RigidBody3D
-		if not p_platform_pass and not collided_with_rigidbody : velocity = Vector3.ZERO
-		
-		return
-	
-	# Wall specific response, when moving horizontally against it
-	if result_state.s_wall and horizontal_motion.dot(result_state.wall_normal) < 0.0 :
-		var horizontal_normal       : Vector3 = result_state.wall_normal.slide(up_direction).normalized()
-		# If rigid body interaction is enabled, don't modify velocity on wall if it belongs to a rigid body
-		var collided_with_rigidbody : bool = interact_with_rigid_bodies and m_result.get_collider(result_state.deepest_wall_index) is RigidBody3D
-		# Don't slide velocity, if it's facing away from the wall!
-		var slide_velocity_on_wall  : bool = not p_platform_pass and velocity.dot(result_state.wall_normal) < 0.0 and not collided_with_rigidbody
-		
-		# Handle stepping and obstacle climbing
-		var wall_is_vertical_approx : bool = absf(result_state.wall_normal.dot(up_direction)) < WALL_VERTICAL_APPROX_CMP
-		# INFO : An integer is used, so that floor collision and floor surface can be differentiated.
-		# If 'use_surface_normals' is enabled, the 'is_min_distance_to_floor' method should always run, 
-		# to get floor surface status.
-		var close_to_floor : int = (prev_on_floor or is_on_floor or is_min_distance_to_floor(max_step_height)) as int if not use_surface_normals else is_min_distance_to_floor(max_step_height)
-		if not is_zero_approx(max_step_height) and (prev_on_floor or close_to_floor) :
-			# Handle special cases for surface normal stepping, when floor is surface only.
-			if use_surface_normals and close_to_floor == FloorType.SURFACE and not wall_is_vertical_approx :
-				var wall_surface_normal : Vector3 = search_for_wall_surface_normal_below(m_result, result_state.wall_collision_indexes)
-				var horizontal_wall_surface_normal : Vector3 = wall_surface_normal.slide(up_direction).normalized() if not wall_surface_normal == Vector3.ZERO else Vector3.ZERO
-				
-				# INFO : Only allow climbing if the horizontal motion faces opposite of the wall's surface normal.
-				# This stops the climbing from triggering, when colliding with a ledge from above.
-				var moving_away_from_ledge : bool = not wall_surface_normal == Vector3.ZERO and horizontal_motion.dot(horizontal_wall_surface_normal) > 0.0
-				
-				# Try and slide up to stable ground
-				if not moving_away_from_ledge and horizontal_motion.slide(result_state.wall_normal).dot(up_direction) > 0.0 :
-					# Slide using the intersection between the motion plane and the wall plane,
-					# in order to keep the direction intact
-					# Add offset to motion to help move to stable floor at low velocities
-					var offset_dir : Vector3 = -horizontal_normal
-					new_motion = new_motion.slide(up_direction) + offset_dir * safe_margin * RECOVERY_FACTOR
-					
-					# Retain horizontal magnitude of remaining motion
-					var wished_horizontal_length : float = new_motion.length()
-					
-					new_motion = up_direction.cross(new_motion).cross(result_state.wall_normal)
-					
-					var current_horizontal_length : float = new_motion.slide(up_direction).length()
-					if not is_zero_approx(current_horizontal_length) : 
-						new_motion *= (wished_horizontal_length / current_horizontal_length)
-					
-					# Reset gravity accumulation
-					if slide_velocity_on_wall and not velocity_facing_up: 
-						velocity = velocity.slide(up_direction)
-					
-					# Start new iteration
-					slide_count += 1
-					move_and_slide_grounded(new_motion, p_platform_pass)
-					return
-			# INFO : When surface normal stepping is allowed, the vertical wall check optimization
-			# is ignored to make surface normal stepping work on non vertical walls.
-			elif not has_stepped and (wall_is_vertical_approx or use_surface_normals) :
-				var step_height        : float   = 0.0
-				var h_remaining_motion : Vector3 = remaining_motion.slide(up_direction)
-				var step_motion_offset : Vector3 = -horizontal_normal * safe_margin * RECOVERY_FACTOR
-				var step_motion        : Vector3 = h_remaining_motion
-				# INFO : Step motion is extended, so that recoveries won't cancel out the motion towards
-				# the wall. This ensures stepping will always happen when collided with step facing towards it,
-				# regardless of the remaining motion.
-				
-				step_height = test_for_step(step_motion + step_motion_offset, horizontal_normal)
-				
-				if not is_zero_approx(step_height) :
-					var up : Vector3 = (step_height + safe_margin) * up_direction
-					
-					has_stepped = true
-					global_position += up  # Move up to step height
-					is_on_wall = prev_iteration_on_wall  # Don't set wall flag, since a step is not considered a wall
-					
-					# Find and remove wall reference in stored data, since a step is not considered a wall
-					var collider_index : int = m_result.get_collider_id(result_state.deepest_wall_index)
-					var array_index    : int = ColliderData.find_by_id(collider_datas, collider_index) 
-					if array_index != -1 :
-						collider_datas.remove_at(array_index)
-					
-					new_motion = step_motion + step_motion_offset
-					
-					# Start new iteration
-					slide_count += 1
-					move_and_slide_grounded(new_motion, p_platform_pass)
-					return
-		
-		# Stop jittering in corners
-		if result_state.wall_normals.size() > 1 :
-			for wall_normal in result_state.wall_normals :
-				
-				if wall_normal.is_equal_approx(result_state.wall_normal) :
-					continue
-				
-				# Collision is corner case
-				if wall_normal.dot(result_state.wall_normal) > 0.0 :
-					var h_wall_normal : Vector3 = wall_normal.slide(up_direction).normalized()
-					
-					# If the slides would go against each other, stop horizontal motion
-					if p_motion.slide(horizontal_normal).dot(p_motion.slide(h_wall_normal)) < 0.0 :
-						new_motion = new_motion.dot(up_direction) * up_direction
-						
-						if slide_velocity_on_wall : velocity = velocity.dot(up_direction) * up_direction
-						
-						# Cancel travel if not too much
-						if travel.length() < safe_margin * RECOVERY_FACTOR :
-							global_position -= travel
-						
-						if new_motion.is_zero_approx() :
-							return
-						
-						# Start new iteration
-						slide_count += 1
-						move_and_slide_grounded(new_motion, p_platform_pass)
-						return
-		
-		if result_state.s_wall_floor_support :
-			new_motion = new_motion.slide(result_state.floor_normal)  # Also slide along wall floor
+		if p_set_final_state :
+			# Invalidate floor collider
+			current_floor_collider_encoded = null
 			
-			# Stop sliding up wall floor due to recovery
-			if floor_block_on_wall and not velocity_facing_up and horizontal_motion.dot(result_state.floor_normal) < -CMP_EPSILON:
-				if slide_velocity_on_wall : velocity = velocity.dot(up_direction) * up_direction
-				global_position -= travel
-				return
+			is_on_floor = true
+			current_floor_normal = p_col_state.wall_floor_normal
+	
+	# Wall-ceiling
+	# NOTE : Wall-ceilings are only registered in collision state,
+	# if collision includes no regular floor contacts, so that doesn't need to be checked here.
+	if p_set_ceiling and p_col_state.s_wall_ceiling :
+		collided_with_ceiling = true
+		last_ceiling_normal = p_col_state.wall_ceiling_normal
 		
-		# Don't slide up on steep slopes when on floor and velocity is not facing up
-		if floor_block_on_wall :
-			apply_default_sliding = false
-			
-			# Set new motion
-			if (prev_on_floor or is_on_floor) and not velocity_facing_up :
-				# Revert motion
-				# NOTE : This is code is from the og move_and_slide, but is this right?
-				var travel_length : float = travel.length()
-				var cancel_dist_max : float = minf(0.1, safe_margin * 20)
-				if travel_length <= safe_margin + CMP_EPSILON :
-					global_position -= travel
-					travel = Vector3.ZERO
-				elif travel_length < cancel_dist_max :
-					global_position -= travel.slide(up_direction)
-					new_motion = p_motion.slide(up_direction)
-					travel = Vector3.ZERO
-				
-				# Don't snap if stepped, or the character will be back on previous floor
-				if not has_stepped : 
-					snap_to_floor(max_snap_length)
-				
-				new_motion = new_motion.slide(horizontal_normal)
-				
-			else :
-				new_motion = new_motion.slide(result_state.wall_normal)
-			
-			# Scales the horizontal velocity according to the wall slope.
-			if slide_velocity_on_wall :
-				if velocity_facing_up :
-					var slide_vel : Vector3 = velocity.slide(result_state.wall_normal)
-					velocity = up_direction * velocity.dot(up_direction) + slide_vel.slide(up_direction)
-				else :
-					velocity = velocity.slide(horizontal_normal)
-		
+		if p_set_final_state :
+			is_on_ceiling = true
+			current_ceiling_normal = p_col_state.wall_ceiling_normal
+	
+	# Merge and store collider datas
+	for collider_data : ColliderData in p_col_state.collider_datas:
+		var array_index : int = ColliderData.find_by_collider_id(collider_datas, collider_data.collider_id)
+		if array_index == -1:
+			# Collider not in array, append it
+			collider_datas.push_back(collider_data)
 		else :
-			if slide_velocity_on_wall : velocity = velocity.slide(result_state.wall_normal)
-		
-		# Stop horizontal motion when under wall slide threshold.
-		var wall_is_fully_vertical : bool = result_state.wall_normal.is_equal_approx(horizontal_normal)
-		if wall_min_slide_angle > 0.0 and (floor_block_on_wall or wall_is_fully_vertical) and not velocity_facing_up:
-			var motion_angle : float = absf(acos(-horizontal_normal.dot(horizontal_motion.normalized())))
-			
-			if motion_angle < wall_min_slide_angle :
-				new_motion = up_direction * new_motion.dot(up_direction)
-				
-				# Revert motion caused by recovery
-				if travel.length() < safe_margin * RECOVERY_FACTOR + CMP_EPSILON :
-					global_position -= travel
-					travel = Vector3.ZERO
-				
-				if slide_velocity_on_wall : velocity = up_direction * velocity.dot(up_direction)
-	
-	# Other wall collisions, where not horizontally moving against it (so only vertically moving against it)
-	elif result_state.s_wall and velocity.dot(result_state.wall_normal) < 0.0 :
-		if wall_slide_vertical_only_collision or not floor_block_on_wall :
-			var collided_with_rigidbody : bool = interact_with_rigid_bodies and m_result.get_collider(result_state.deepest_wall_index) is RigidBody3D
-			var slide_velocity : bool = not p_platform_pass and velocity.dot(result_state.wall_normal) < 0.0 and not collided_with_rigidbody
-			
-			if slide_velocity : velocity = velocity.slide(result_state.wall_normal)
-	
-	
-	# Ceiling specific response
-	if result_state.s_ceiling and p_motion.dot(result_state.ceiling_normal) < 0.0 :
-		var collided_with_rigidbody : bool = interact_with_rigid_bodies and m_result.get_collider(result_state.deepest_ceiling_index) is RigidBody3D
-		var slide_velocity : bool = not p_platform_pass and velocity.dot(result_state.ceiling_normal) < 0.0 and not collided_with_rigidbody
-		
-		if slide_on_ceiling or not velocity_facing_up :
-			if slide_velocity : velocity = velocity.slide(result_state.ceiling_normal)
-		else :
-			# Remove vertical component
-			if slide_velocity : velocity = velocity.slide(up_direction)
-			new_motion = new_motion.slide(up_direction)
-	
-	
-	# Return if no motion remains, after handling special cases
-	if new_motion.is_zero_approx() :
-		return
-	
-	if apply_default_sliding :
-		var slide_motion : Vector3 = new_motion.slide(collision_normal)
-		
-		if sliding_enabled or not is_on_floor:
-			# Try to keep horizontal motion direction when sliding on floor and not on wall
-			if result_state.s_floor and not result_state.s_wall and not horizontal_motion.is_zero_approx() :
-				# Slide using the intersection between the motion plane and the floor plane,
-				# in order to keep the direction intact
-				var motion_length : float  = slide_motion.length()
-				slide_motion = up_direction.cross(remaining_motion).cross(result_state.floor_normal)
-				
-				# Keep original length to slow down when going up slopes
-				slide_motion = slide_motion.normalized() * motion_length
-			
-			# Slide only if slide motion is facing towards velocity direction
-			if slide_motion.dot(velocity) > 0.0 :
-				new_motion = slide_motion
-			else :
-				new_motion = Vector3.ZERO
-		
-		else :
-			new_motion = remaining_motion
-	
-	total_travel += travel
-	
-	# Apply constant speed
-	if floor_constant_speed and can_apply_constant_speed and prev_on_floor and is_on_floor and not new_motion.is_zero_approx() :
-		var travel_slide_up : Vector3 = total_travel.slide(up_direction)
-		new_motion = new_motion.normalized() * maxf(0.0, initial_motion_slide_up.length() - travel_slide_up.length())
-	
-	can_apply_constant_speed = not can_apply_constant_speed and not sliding_enabled
-	sliding_enabled = true
-	
-	# Iterate
-	slide_count += 1
-	move_and_slide_grounded(new_motion, p_platform_pass)
+			# Collider is in array, update it
+			collider_datas[array_index].concat_data_unique_only(collider_data)
 
 
 
 
-func move_and_slide_floating(p_motion : Vector3) -> void :
-	# Done maximum allowed amount of iterations
-	# NOTE : this shouldn't really happen, 6 slides should be enough for most cases
-	if slide_count > MAX_SLIDES :
-		slide_count = MAX_SLIDES  # Set accurate value for debugging
-		return
-	
-	var m_result := PhysicsTestMotionResult3D.new()
-	
-	# Perform recovery, move body along motion, stop if collided
-	var collided : bool = _move_and_collide(m_result, p_motion, false, true, MAX_SLIDE_COLLISIONS, false, safe_margin)
-	
-	# Moved all the way, no collision to respond to
-	if not collided :
-		return
-	
-	
-	var result_state := CollisionState.new()
-	
-	# Store info about collision and update state with collision
-	set_collision_state(m_result, result_state)
-	collision_results.append(result_state)
-	update_overall_state(result_state, false, true, false)
-	
-	# Motion was zero, no need to slide
-	if p_motion.is_zero_approx() :
-		return
-	
-	
-	# Set new motion for next iteration, also modify velocity
-	var remaining_motion      : Vector3 = m_result.get_remainder()
-	var travel                : Vector3 = m_result.get_travel()
-	var new_motion            : Vector3 = remaining_motion
-	
-	# If rigid body interaction is enabled, don't modify velocity on wall if it belongs to a rigid body
-	var collided_with_rigidbody : bool = interact_with_rigid_bodies and m_result.get_collider(result_state.deepest_wall_index) is RigidBody3D
-	# Don't slide velocity, if it's facing away from the wall!
-	var slide_velocity_on_wall  : bool = velocity.dot(result_state.wall_normal) < 0.0 and not collided_with_rigidbody
-	
-	if wall_min_slide_angle > 0.0 and acos(result_state.wall_normal.dot(-velocity.normalized())) < wall_min_slide_angle + ANGLE_CMP_EPSILON :
-		# Stop motion and velocity when under wall slide threshold
-		# Revert motion caused by recovery
-		if travel.length() < safe_margin * RECOVERY_FACTOR + CMP_EPSILON :
-			global_position -= travel
-			travel = Vector3.ZERO
-		
-		if slide_velocity_on_wall : 
-			velocity = Vector3.ZERO
-		
-		return
-	elif slide_count == 0 :
-		var motion_slide_norm : Vector3 = remaining_motion.slide(result_state.wall_normal).normalized()
-		new_motion = motion_slide_norm * (p_motion.length() - travel.length())
-		if slide_velocity_on_wall : 
-			velocity = velocity.slide(result_state.wall_normal)
-	else :
-		new_motion = remaining_motion.slide(result_state.wall_normal)
-		if slide_velocity_on_wall : 
-			velocity = velocity.slide(result_state.wall_normal)
-	
-	if new_motion.dot(velocity) <= 0.0 :
-		return
-	
-	if new_motion.is_zero_approx() :
-		return
-	
-	# Iterate
-	slide_count += 1
-	move_and_slide_floating(new_motion)
-
-
-
-
-## Checks if the character would be on the floor when snapped
-func on_floor_if_snapped(p_velocity_facing_up : bool) -> bool :
-	
-	if up_direction == Vector3.ZERO or is_on_floor or not prev_on_floor or p_velocity_facing_up :
-		return false
-	
-	var snap_length : float = maxf(max_snap_length, snap_safe_margin)
-	
-	var collided    : bool
-	var snap_motion := -up_direction * snap_length
-	var m_result    := PhysicsTestMotionResult3D.new()
-	
-	collided = _move_and_collide(m_result, snap_motion, true, true, 4, false, snap_safe_margin)
-	
-	if not collided :
-		return false
-	
-	var result_state := CollisionState.new()
-	
-	set_collision_state(m_result, result_state)
-	
-	return result_state.s_floor
-
-
-
-
-## Checks if the body is at least the given distance away from the floor.
-## Returns 0 if no floor found.
-## Rerurns 1 if floor collision is found or already on floor.
-## Returns 2 if no floor collision is found, but a floor surface is found.
-func is_min_distance_to_floor(p_min_distance : float) -> FloorType :
-	
-	var min_distance : float = maxf(snap_safe_margin, p_min_distance)
-	
-	var collided    : bool
-	var test_motion := Vector3.DOWN * min_distance
-	var m_result    := PhysicsTestMotionResult3D.new()
-	
-	collided = _move_and_collide(m_result, test_motion, true, true, 4, false, safe_margin)
-	
-	if not collided :
-		return FloorType.NONE
-	
-	var result_state := CollisionState.new()
-	
-	set_collision_state(m_result, result_state)
-	
-	if result_state.s_floor :
-		return FloorType.COLLISION
-	
-	if use_surface_normals and result_state.s_wall :
-		var feet_pos            : Vector3 = get_feet_position()
-		var max_surface_height  : float = feet_pos.dot(up_direction)
-		var floor_surface_found : bool = search_for_floor_surface_normal(m_result, max_surface_height)
-		
-		if floor_surface_found :
-			return FloorType.SURFACE
-	
-	return FloorType.NONE
-
-
-
-
-
-## If a step is detected, this method will return the height of the step (always positive),
-## otherwise it will return 0, if any of the tests fail.
-func test_for_step(p_horizontal_motion : Vector3, p_horizontal_wall_normal : Vector3) -> float :
-	
-	if p_horizontal_motion.is_zero_approx() :
-		return 0.0
-	
-	# NOTE : floor condition is checked outside.
-	
-	# Check if step can be climbed
-	var motion_tester  := MotionTester.new()
-	var test_transform : Transform3D = global_transform
-	
-	# UP
-	var up := up_direction * max_step_height
-	
-	motion_tester.test_motion(self, test_transform, up, safe_margin, false, 0)
-	# NOTE : We only need the travel of the motion, so no collision report is needed.
-	# NOTE : Safe margin should always be high enough to avoid tunneling!
-	# Recovery will affect the motion, but can be compensated.
-	
-	# FORWARD
-	test_transform.origin = motion_tester.endpos
-	var forward : Vector3 = p_horizontal_motion
-	
-	motion_tester.test_motion(self, test_transform, forward, safe_margin, false, 0)
-	
-	# DOWN
-	var down := -up_direction * max_step_height
-	test_transform.origin = motion_tester.endpos
-	
-	motion_tester.test_motion(self, test_transform, down, safe_margin, true, 4)
-	
-	if not motion_tester.hit :
-		return 0.0
-	
-	var step_height : float = (motion_tester.endpos - global_position).dot(up_direction)
-	
-	if step_height < 0.0 or is_zero_approx(step_height) :
-		return 0.0
-	
-	var result_state := CollisionState.new()
-	set_collision_state(motion_tester.res, result_state)
-	
-	if not result_state.s_floor :
-		if use_surface_normals :
-			var floor_found : bool
-			var feet_pos : Vector3 = get_feet_position()
-			var max_surface_height : float = feet_pos.dot(up_direction) + step_height
-			
-			floor_found = search_for_floor_surface_normal(motion_tester.res, max_surface_height, motion_tester.endpos + collider.position)
-			if not floor_found :
-				return 0.0
-		else :
-			return 0.0
-	
-	# Check if climbed step, and not a slope
-	# INFO : We check the angle of the horizontal summed motion and the wall we are trying to climb.
-	# If the motion direction is looking away from the wall, or is parallel to the wall,
-	# the character did not climb it.
-	var h_motion_sum : Vector3 = (motion_tester.endpos + (-up_direction) * step_height) - global_position
-	
-	# NOTE : When sliding parallel along a flat wall, the horizontal motion towards the wall normal
-	# can be less than zero due to recoveries, so an epsilon is needed. Otherwise steps can be
-	# falsely detected.
-	if h_motion_sum.dot(p_horizontal_wall_normal) >= -safe_margin :
-		return 0.0
-	
-	return step_height
-
-
-
-
-
-## Calculates information about given collisions
-## and stores it in the given 'CollisionState' object.
-func set_collision_state(p_motion_result : PhysicsTestMotionResult3D, p_col_state : CollisionState, rest_check : bool = false) -> void :
-	
-	# Check for null reference
-	if not p_motion_result :
-		printerr("PhysicsTestMotionResult3D object is null!")
-		return
+## Calculates information about given collisions and stores it in the given 'CollisionState' object.
+func set_collision_state(
+	p_motion_result           : PhysicsTestMotionResult3D,
+	p_col_state               : CollisionState,
+	p_ignore_character_motion : bool = false
+	) -> void :
 	
 	p_col_state.motion_result = p_motion_result
 	
@@ -1371,50 +1669,66 @@ func set_collision_state(p_motion_result : PhysicsTestMotionResult3D, p_col_stat
 	
 	collision_count = p_motion_result.get_collision_count()
 	
-	for i in collision_count :
+	for i : int in collision_count :
 		var collision_normal : Vector3 = p_motion_result.get_collision_normal(i)
 		var collision_depth  : float = p_motion_result.get_collision_depth(i)
 		
-		# NOTE: When checking collisions in a resting positions, we only want the ones where
-		# The orher body is moving towards the character, and the character is not moving towards
-		# the other body.
-		if rest_check :
+		# Handle case when we only want to register collisions that happened only
+		# because of motion from other bodies
+		if p_ignore_character_motion :
 			var collider_velocity : Vector3 = p_motion_result.get_collider_velocity(i)
 			var character_summed_velocity : Vector3 = velocity + platform_velocity
-			if velocity.dot(collision_normal) < 0.0 or collision_normal.dot(character_summed_velocity - collider_velocity) > 0.0 :
-				continue
+			var relative_velocity : Vector3 = character_summed_velocity - collider_velocity
+			if velocity.dot(collision_normal) < -CMP_EPSILON or relative_velocity.dot(collision_normal) > 0.0 :
+				continue  # Skip collision
+		
+		# Store collider data
+		var collider_id : int = p_motion_result.get_collider_id(i)
+		var collider_rid : RID = p_motion_result.get_collider_rid(i)
+		var collision_point : Vector3 = p_motion_result.get_collision_point(i)
+		var array_index : int = ColliderData.find_by_collider_id(p_col_state.collider_datas, collider_id)
+		if array_index == -1 :
+			p_col_state.collider_datas.push_back(
+				ColliderData.new(collider_id, collider_rid, collision_normal, collision_point)
+			)
+		else :
+			var collider_data : ColliderData = p_col_state.collider_datas[array_index]
+			if not collider_data.contains_point(collision_point) :
+				collider_data.collision_points.push_back(collision_point)
+				collider_data.collision_normals.push_back(collision_normal)
+				collider_data.collision_count += 1
 		
 		if motion_mode == MotionMode.GROUNDED :
 			# Check if floor collision
-			var floor_angle : float = acos(collision_normal.dot(up_direction))
-			if floor_angle <= floor_max_angle + ANGLE_CMP_EPSILON :
+			if is_floor(collision_normal) :
 				p_col_state.s_floor = true
-				p_col_state.floor_collision_indexes.append(i)
+				p_col_state.floor_collision_indexes.push_back(i)
 				
 				if collision_depth > max_floor_depth :
 					max_floor_depth = collision_depth
-					p_col_state.floor_normal = collision_normal
+					p_col_state.deepest_floor_normal = collision_normal
 					p_col_state.deepest_floor_index = i
+				
 				continue
 			
 			# Check if ceiling collision
-			var ceiling_angle : float = acos(collision_normal.dot(-up_direction))
-			if ceiling_angle <= floor_max_angle + ANGLE_CMP_EPSILON :
+			if is_ceiling(collision_normal) :
 				p_col_state.s_ceiling = true
-				p_col_state.ceiling_collision_indexes.append(i)
+				p_col_state.ceiling_collision_indexes.push_back(i)
 				
 				if collision_depth > max_ceiling_depth : 
 					max_ceiling_depth = collision_depth
-					p_col_state.ceiling_normal = collision_normal
+					p_col_state.deepest_ceiling_normal = collision_normal
 					p_col_state.deepest_ceiling_index = i
+				
 				continue
 		
 		p_col_state.s_wall = true  # Collision is wall by default
-		p_col_state.wall_collision_indexes.append(i)  # Store wall collision index
+		p_col_state.wall_collision_indexes.push_back(i)
 		
 		if collision_depth > max_wall_depth :
 			max_wall_depth = collision_depth
-			p_col_state.wall_normal = collision_normal
+			p_col_state.deepest_wall_normal = collision_normal
 			p_col_state.deepest_wall_index = i
 		
 		# Collect wall normals for calculating avarage
@@ -1422,114 +1736,83 @@ func set_collision_state(p_motion_result : PhysicsTestMotionResult3D, p_col_stat
 			tmp_wall_normal = collision_normal
 			wall_normal_sum += collision_normal
 			wall_collision_count += 1
-			
-			# Store unique wall normals
-			p_col_state.wall_normals.append(collision_normal)
 	
 	if motion_mode == MotionMode.GROUNDED and wall_collision_count > 1 :
 		var combined_wall_normal : Vector3 = wall_normal_sum.normalized()
-		var on_regular_floor : bool = (is_on_floor or prev_on_floor) and not prev_on_wall_floor
 		
-		if not p_col_state.s_floor and not on_regular_floor :
+		if not p_col_state.s_floor :
 			# Check if wall normals cancel out to floor support
-			# Only register wall floors, if not on regular floor, to avoid sliding up on walls when
-			# standing on regular floor.
-			var floor_angle : float = acos(combined_wall_normal.dot(up_direction))
-			if floor_angle <= floor_max_angle + ANGLE_CMP_EPSILON :
-				p_col_state.s_floor = true
-				p_col_state.s_wall_floor_support = true
-				p_col_state.floor_normal = combined_wall_normal
+			if is_floor(combined_wall_normal) :
+				p_col_state.s_wall_floor = true
+				p_col_state.wall_floor_normal = combined_wall_normal
 				# NOTE : Keep wall state for proper sliding!
 				return
 		
 		if not p_col_state.s_ceiling :
 			# Check if wall normals cancel out to ceiling support
-			var ceiling_angle : float = acos(combined_wall_normal.dot(-up_direction))
-			if ceiling_angle <= floor_max_angle + ANGLE_CMP_EPSILON :
-				p_col_state.s_ceiling = true
-				p_col_state.ceiling_normal = combined_wall_normal
+			if is_ceiling(combined_wall_normal) :
+				p_col_state.s_wall_ceiling = true
+				p_col_state.wall_ceiling_normal = combined_wall_normal
+				# NOTE : Keep wall state for proper sliding!
 
 
 
 
-## Updates the overall state with the given collision state, assuming it's the latest.
-func update_overall_state(p_col_state : CollisionState, p_set_floor : bool, p_set_wall : bool, p_set_ceiling : bool) -> void :
-	
-	# Floor
-	if p_set_floor and p_col_state.s_floor :
-		is_on_floor = true
-		is_on_wall_floor = is_on_wall_floor or p_col_state.s_wall_floor_support
-		current_floor_normal = p_col_state.floor_normal
-		
-		# Store unique floor collider datas
-		var deepest_floor_array_index : int = -1
-		for index in p_col_state.floor_collision_indexes :
-			var array_index : int = ColliderData.append_or_update(collider_datas, p_col_state, index, ColliderData.CollisionType.FLOOR)
-			if index == p_col_state.deepest_floor_index :
-				deepest_floor_array_index = array_index
-				
-				# Store floor collider
-				if not current_floor_collider_encoded :
-					current_floor_collider_encoded = EncodedObjectAsID.new()
-				current_floor_collider_encoded.object_id = p_col_state.motion_result.get_collider_id(p_col_state.deepest_floor_index)
-				
-		# Wall floor support does not have a collider, we take it into account
-		if deepest_floor_array_index != -1 :
-			current_floor_collider_data = collider_datas[deepest_floor_array_index]
-	
-	# Wall
-	if p_set_wall and p_col_state.s_wall :
-		is_on_wall = true
-		current_wall_normal = p_col_state.wall_normal
-		
-		# Store unique wall collider datas
-		for index in p_col_state.wall_collision_indexes :
-			ColliderData.append_or_update(collider_datas, p_col_state, index, ColliderData.CollisionType.WALL)
-	
-	# Ceiling
-	if p_set_ceiling and p_col_state.s_ceiling :
-		is_on_ceiling = true
-		current_ceiling_normal = p_col_state.ceiling_normal
-		
-		# Store unique ceiling collider datas
-		for index in p_col_state.ceiling_collision_indexes :
-			ColliderData.append_or_update(collider_datas, p_col_state, index, ColliderData.CollisionType.CEILING)
-	
-	# HACK : Make sure the floor collider's type and normal is not overwritten to wall or ceiling
-	if current_floor_collider_data and current_floor_collider_data.collision_type != ColliderData.CollisionType.FLOOR :
-		current_floor_collider_data.collision_normal = current_floor_normal
-		current_floor_collider_data.collision_type = ColliderData.CollisionType.FLOOR
+## Calculates whether given normal is floor or not.
+func is_floor(p_normal : Vector3) -> bool:
+	var floor_angle : float = acos(p_normal.dot(up_direction))
+	if floor_angle <= floor_max_angle + ANGLE_CMP_EPSILON :
+		return true
+	return false
 
 
 
 
-## Returns the centre-bottom (feet) position of the collider
-func get_feet_position() -> Vector3 :
+## Calculates whether given normal is ceiling or not.
+func is_ceiling(p_normal : Vector3) -> bool:
+	var ceiling_angle : float = acos(p_normal.dot(-up_direction))
+	if ceiling_angle <= floor_max_angle + ANGLE_CMP_EPSILON :
+		return true
+	return false
+
+
+
+
+## Calculates whether given normal is wall or not.
+func is_wall(p_normal : Vector3) -> bool:
+	return not (is_floor(p_normal) or is_ceiling(p_normal))
+
+
+
+
+## Returns the centre-bottom (feet) position of the collider.
+func get_feet_position(p_global_position : Vector3) -> Vector3 :
+	var collider_global_position : Vector3 = collider.position + p_global_position
 	
 	if collider.shape is CylinderShape3D :
 		var cylinder := collider.shape as CylinderShape3D
-		return collider.global_position + (cylinder.height * 0.5) * -up_direction
+		return collider_global_position + (cylinder.height * 0.5) * -up_direction
 	
 	if collider.shape is BoxShape3D :
 		var box := collider.shape as BoxShape3D
-		return collider.global_position + (box.size.y * 0.5) * -up_direction
+		return collider_global_position + (box.size.y * 0.5) * -up_direction
 	
 	if collider.shape is CapsuleShape3D :
 		var capsule := collider.shape as CapsuleShape3D
-		return collider.global_position + (capsule.height * 0.5) * -up_direction
+		return collider_global_position + (capsule.height * 0.5) * -up_direction
 	
 	if collider.shape is SphereShape3D :
 		var sphere := collider.shape as SphereShape3D
-		return collider.global_position + (sphere.radius) * -up_direction
+		return collider_global_position + (sphere.radius) * -up_direction
 	
-	printerr("Shape not handled by get_feet_position()!")
+	printerr("IKCC: Collider shape not handled by get_feet_position()! (%s)" % collider.shape.get_class())
 	
-	return collider.global_position
+	return collider_global_position
 
 
 
 
-## Returns the radius of the collider, if the collider is rounded, else it returns 0.0
+## Returns the radius of the collider, if the collider is round, else it returns 0.0.
 func get_collider_radius() -> float :
 	
 	if collider.shape is CapsuleShape3D :
@@ -1545,27 +1828,27 @@ func get_collider_radius() -> float :
 
 
 
-## Checks if the collision result includes a floor surface normal using raycasts
-func search_for_floor_surface_normal(p_m_result : PhysicsTestMotionResult3D, p_max_height : float = 0.0, p_ray_origin : Vector3 = collider.global_position) -> bool :
+## Checks if the collision result includes a floor surface normal using raycasts.
+func collided_with_floor_surface(p_collision_state : CollisionState, p_global_position : Vector3) -> bool :
 	var raycast            := RayCast.new()
 	var direct_space_state : PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var max_surface_height : float = get_feet_position(p_global_position).dot(up_direction) + get_collider_radius()
 	
-	for i in p_m_result.get_collision_count() :
-		var col_point  : Vector3 = p_m_result.get_collision_point(i)
+	for i : int in p_collision_state.wall_collision_indexes :
+		var col_point  : Vector3 = p_collision_state.motion_result.get_collision_point(i)
 		
 		# If the surface is too high, it's not a floor
-		var collider_radius : float = get_collider_radius()
-		if col_point.dot(up_direction) > p_max_height + collider_radius :
+		if col_point.dot(up_direction) > max_surface_height :
 			continue
 		
-		var col_normal : Vector3 = p_m_result.get_collision_normal(i)
+		var ray_origin : Vector3 = p_global_position + collider.position
+		var col_normal : Vector3 = p_collision_state.motion_result.get_collision_normal(i)
 		var offset_dir : Vector3 = -col_normal
 		var dest       : Vector3 = col_point + offset_dir * RAYCAST_OFFSET_LENGTH
 		
-		raycast.intersect(p_ray_origin, dest, self, collision_mask, direct_space_state)
+		raycast.intersect(ray_origin, dest, self, collision_mask, direct_space_state)
 		
-		var floor_angle : float = acos(raycast.normal.dot(up_direction))
-		if raycast.hit and floor_angle <= floor_max_angle + ANGLE_CMP_EPSILON :
+		if raycast.hit and is_floor(raycast.normal) :
 			return true
 	
 	return false
@@ -1574,129 +1857,36 @@ func search_for_floor_surface_normal(p_m_result : PhysicsTestMotionResult3D, p_m
 
 
 ## Checks if the collision result includes a wall surface normal
-## below a wall collision point using raycasts
-func search_for_wall_surface_normal_below(p_m_result : PhysicsTestMotionResult3D, p_wall_indexes : PackedInt32Array) -> Vector3 :
+## below a wall collision point using raycasts.
+## Returns the wall surface normal if found, else a zero vector.
+func get_wall_surface_normal_below(p_collision_sate : CollisionState, p_velocity : Vector3) -> Vector3 :
 	var raycast            := RayCast.new()
 	var direct_space_state : PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
 	
-	for i in p_wall_indexes :
-		var col_point  : Vector3 = p_m_result.get_collision_point(i)
-		var col_normal : Vector3 = p_m_result.get_collision_normal(i)
-		var dest       : Vector3 = col_point + (-up_direction) * RAYCAST_OFFSET_LENGTH  # Offset downward to find wall surface below
+	for i : int in p_collision_sate.wall_collision_indexes :
+		var col_normal : Vector3 = p_collision_sate.motion_result.get_collision_normal(i)
+		if p_velocity.dot(col_normal) > 0.0 :
+			continue
+		
+		var col_point  : Vector3 = p_collision_sate.motion_result.get_collision_point(i)
+		var offset     : Vector3 = (col_normal + up_direction) * -RAYCAST_OFFSET_LENGTH
+		var dest       : Vector3 = col_point + offset
 		var origin     : Vector3 = col_point + col_normal * RAYCAST_OFFSET_LENGTH
 		
 		raycast.intersect(origin, dest, self, collision_mask, direct_space_state)
 		
-		if not raycast.hit :
-			continue
-		
-		var floor_angle : float = acos(raycast.normal.dot(up_direction))
-		if floor_angle <= floor_max_angle + ANGLE_CMP_EPSILON :
-			continue
-		
-		var ceiling_angle : float = acos(col_normal.dot(-up_direction))
-		if ceiling_angle <= floor_max_angle + ANGLE_CMP_EPSILON :
-			continue
-		
-		return raycast.normal
+		if raycast.hit and is_wall(raycast.normal):
+			return raycast.normal
 	
 	return Vector3.ZERO
 
 
 
 
-## Returns information about a collision between the character body and a rigid body
-func calculate_impulse_from_collision(p_rigidbody : RigidBody3D, p_collider_data : ColliderData, p_character_velocity : Vector3 = velocity, p_recheck_for_points : bool = false) -> CollisionImpulseData :
-	var impulse_data := CollisionImpulseData.new()
-	var rigidbody_body_state : PhysicsDirectBodyState3D = PhysicsServer3D.body_get_direct_state(p_rigidbody.get_rid())
-	
-	var average_point  : Vector3 = Math.calculate_vector3_array_avarage(p_collider_data.collision_points) if not p_recheck_for_points else Vector3.ZERO
-	var average_normal : Vector3 = -p_collider_data.collision_normal
-	# NOTE : This is not actually the avarage normal, but the latest collision's.
-	# INFO : The calculations assume the collision normal is facing the rigid body.
-	
-	impulse_data.collision_normal = -average_normal  # Saved normal faces the character body
-	
-	if p_recheck_for_points :
-		var collision_points : PackedVector3Array = calculate_collision_points_with_body(p_rigidbody)
-		if collision_points.size() > 0 : 
-			average_point = Math.calculate_vector3_array_avarage(collision_points)
-		else  :
-			average_point = Math.calculate_vector3_array_avarage(p_collider_data.collision_points)
-	
-	var m1 : float = mass
-	var m2 : float = p_rigidbody.mass
-	var I2_inv : Vector3 = rigidbody_body_state.inverse_inertia
-	
-	var r2 : Vector3 = average_point - p_rigidbody.global_transform.origin
-	
-	impulse_data.impulse_position = r2
-	
-	var v1 : Vector3 = p_character_velocity
-	var v2 : Vector3 = p_rigidbody.linear_velocity
-	
-	var omega2 : Vector3 = p_rigidbody.angular_velocity
-	
-	var relative_velocity : Vector3 = (v2 + omega2.cross(r2)) - v1
-	var v_rel_norm : float = relative_velocity.dot(average_normal)
-	
-	impulse_data.relative_speed_towards_normal = v_rel_norm
-	
-	if v_rel_norm > 0.0:
-		impulse_data.bodies_separating = true
-		return impulse_data  # No impulse needed if bodies are separating
-		
-	impulse_data.bodies_separating = false
-	
-	var restitution : float = minf(physics_material_bounce, p_rigidbody.physics_material_override.bounce if p_rigidbody.physics_material_override else 0.0)
-	
-	var j_denom : float = (1.0 / m1) + (1.0 / m2) + (average_normal.dot((r2.cross(average_normal) * I2_inv).cross(r2)))
-	var j : float= -(1.0 + restitution) * v_rel_norm / j_denom
-	var impulse : Vector3 = j * average_normal
-	
-	impulse_data.impulse = impulse
-	
-	return impulse_data
-
-
-
-
-## Returns the collision points between the given body object and the character body
-func calculate_collision_points_with_body(p_other_body : PhysicsBody3D) -> PackedVector3Array :
-	var direct_space_state := get_world_3d().direct_space_state
-	var params := PhysicsShapeQueryParameters3D.new()
-	params.shape = collider.shape
-	params.margin = safe_margin
-	params.transform = global_transform
-	params.collision_mask = 1 << 31
-	params.exclude = [self]
-	
-	var original_body_layer : int = p_other_body.collision_layer
-	p_other_body.collision_layer = 1 << 31
-	var collision_points : PackedVector3Array = direct_space_state.collide_shape(params, 16)
-	p_other_body.collision_layer = original_body_layer
-	
-	return collision_points
-
-
-
-
-## Applies an impulse with reduced or eliminated torque, based on the given impulse's position
-func apply_impulse_to_rb_platform(p_impulse_data : CollisionImpulseData, p_rigidbody : RigidBody3D, p_platform_body_state : PhysicsDirectBodyState3D) -> void :
-	var impulse : Vector3 = p_impulse_data.impulse
-	var impulse_position : Vector3 = p_impulse_data.impulse_position
-	var collision_normal : Vector3 = p_impulse_data.collision_normal
-	var rigidbody_center_of_mass : Vector3 = p_platform_body_state.center_of_mass - p_rigidbody.global_position
-	var impulse_distance_from_center_of_mass : float = (impulse_position - rigidbody_center_of_mass).slide(collision_normal).length()
-	
-	if impulse_distance_from_center_of_mass < rigid_body_platform_central_impulse_threshold :
-		p_rigidbody.apply_central_impulse(impulse)
-	else :
-		p_rigidbody.apply_impulse(impulse, impulse_position)
-		
-		 # Calculate and apply counter-torque if necessary
-		var induced_torque : Vector3 = impulse_position.cross(impulse * rigid_body_platform_counter_torque_factor)
-		p_rigidbody.apply_torque_impulse(-induced_torque)
+## Returns true if given body is in a dynamic mode, else it returns false.
+static func is_body_dynamic(rid : RID) -> bool :
+	var body_mode := PhysicsServer3D.body_get_mode(rid)
+	return body_mode == PhysicsServer3D.BodyMode.BODY_MODE_RIGID or body_mode == PhysicsServer3D.BodyMode.BODY_MODE_RIGID_LINEAR
 
 
 
@@ -1707,125 +1897,167 @@ func apply_impulse_to_rb_platform(p_impulse_data : CollisionImpulseData, p_rigid
 # ------------------------------
 
 
-## Stores imformation about about motion result collisions
+## Stores imformation about motion test collisions.
 class CollisionState extends RefCounted :
 	var s_floor                   : bool
 	var s_wall                    : bool
 	var s_ceiling                 : bool
-	var s_wall_floor_support      : bool
+	var s_wall_floor              : bool
+	var s_wall_ceiling            : bool
+	var s_floor_surface_only      : bool
 	var deepest_floor_index       : int
 	var deepest_wall_index        : int
 	var deepest_ceiling_index     : int
-	var wall_normal               : Vector3
-	var floor_normal              : Vector3
-	var ceiling_normal            : Vector3
-	var wall_normals              : PackedVector3Array
+	var deepest_wall_normal       : Vector3
+	var deepest_floor_normal      : Vector3
+	var deepest_ceiling_normal    : Vector3
+	var wall_floor_normal         : Vector3
+	var wall_ceiling_normal       : Vector3
 	var floor_collision_indexes   : PackedInt32Array
 	var wall_collision_indexes    : PackedInt32Array
 	var ceiling_collision_indexes : PackedInt32Array
 	var motion_result             : PhysicsTestMotionResult3D
+	var collider_datas            : Array[ColliderData]
 
 
-## Stores info about a collision with a rigid body
-class CollisionImpulseData extends RefCounted :
-	var bodies_separating             : bool
-	var relative_speed_towards_normal : float
-	var collision_normal              : Vector3
-	var impulse                       : Vector3
-	var impulse_position              : Vector3
+## Input/output and output variables for the 'move_shape' function.
+class MoveShapeIO extends RefCounted :
+	# Input/output
+	var transform             : Transform3D
+	var velocity              : Vector3
+	var time_remaining        : float
+	
+	# Output only
+	var collision_states      : Array[CollisionState]
+	var touched_floor         : bool
+	var has_stepped           : bool
+	## Keeps track of recursion depth.
+	var iteration_count       : int
+	var body_save_states      : Array[BodySaveState]
+	var floor_impact_velocity : Vector3
+	
+	func _init(p_transform : Transform3D, p_velocity : Vector3, p_time_remaining : float) -> void :
+		transform = p_transform
+		velocity = p_velocity
+		time_remaining = p_time_remaining
+	
+	func restore_body_states() -> void :
+		for save_state : BodySaveState in body_save_states :
+			var body_state := PhysicsServer3D.body_get_direct_state(save_state.body_rid)
+			
+			body_state.linear_velocity = save_state.linear_velocity
+			body_state.angular_velocity = save_state.angular_velocity
 
 
-## Stores a collider and collision data that belongs to it
-# INFO : Collision type and normal belongs to the latest collision with the collider.
-# WARNING : This might not work well with concave shapes.
+## Base class for constraints.
+class Constraint extends RefCounted :
+	var plane_normal : Vector3
+
+
+## Stores info about a kinematic constraint.
+class KinematicConstraint extends Constraint :
+	var velocity            : Vector3
+	## Angle in radians.
+	var min_slide_angle     : float
+	var constant_speed      : bool
+	var keep_horizontal_dir : bool
+	
+	## Marked by constraint solver.
+	var is_slide_cancelled : bool
+	
+	func _init(
+		p_plane               : Vector3,
+		p_velocity            : Vector3,
+		p_min_slide_angle     : float = 0.0,
+		p_constant_speed      : bool = false,
+		p_keep_horizontal_dir : bool = false
+		) -> void :
+		plane_normal = p_plane
+		velocity = p_velocity
+		min_slide_angle = p_min_slide_angle
+		constant_speed = p_constant_speed
+		keep_horizontal_dir = p_keep_horizontal_dir
+
+
+## Stores info about a dynamic constraint.
+class DynamicConstraint extends Constraint :
+	var collider_rid    : RID
+	var collision_point : Vector3
+	
+	func _init(p_collider_rid : RID, p_plane : Vector3, p_collision_point : Vector3) -> void :
+		collider_rid = p_collider_rid
+		plane_normal = p_plane
+		collision_point = p_collision_point
+
+
+## Stores data of a body's physics state, so it can be restored.
+class BodySaveState extends RefCounted :
+	var body_rid : RID
+	var linear_velocity : Vector3
+	var angular_velocity : Vector3
+	
+	func _init(p_body_rid : RID, p_linear_velocity : Vector3, p_angular_velocity : Vector3) -> void :
+		body_rid = p_body_rid
+		linear_velocity = p_linear_velocity
+		angular_velocity = p_angular_velocity
+	
+	static func array_contains_rid(p_array : Array[BodySaveState], p_rid : RID) -> bool :
+		for save_state : BodySaveState in p_array :
+			if save_state.body_rid.get_id() == p_rid.get_id() :
+				return true
+		return false
+
+
+## Stores a collider and collision data that belongs to it.
 class ColliderData extends RefCounted :
 	var collider_id       : int
-	var collision_type    : CollisionType
-	var collision_normal  : Vector3
+	var collider_rid      : RID
+	var collision_normals : PackedVector3Array
 	var collision_points  : PackedVector3Array
+	var collision_count   : int
 	
-	enum CollisionType {FLOOR, WALL, CEILING}
-	
-	func _init(p_id : int, p_normal : Vector3, p_point : Vector3, p_collision_type : CollisionType) -> void :
+	func _init(p_id : int, p_rid : RID, p_normal : Vector3, p_point : Vector3) -> void :
 		collider_id = p_id
-		collision_type = p_collision_type
-		collision_normal = p_normal
-		collision_points.append(p_point)
+		collider_rid = p_rid
+		collision_normals = [p_normal]
+		collision_points = [p_point]
+		collision_count = 1
 	
-	static func find_by_id(p_array : Array[ColliderData], p_id : int) -> int :
+	static func find_by_collider_id(p_array : Array[ColliderData], p_collider_id : int) -> int :
 		var index : int = 0
-		for collider_data in p_array :
-			if collider_data.collider_id == p_id :
+		for collider_data : ColliderData in p_array :
+			if collider_data.collider_id == p_collider_id :
 				return index
 			index += 1
 		return -1
 	
-	static func append_or_update(p_collider_data_array : Array[ColliderData] , p_col_state : CollisionState, p_index : int, p_collision_type : CollisionType) -> int :
-		var _collision_point   : Vector3 = p_col_state.motion_result.get_collision_point(p_index)
-		var _collision_normal  : Vector3 = p_col_state.motion_result.get_collision_normal(p_index)
-		var _collider_id : int = p_col_state.motion_result.get_collider_id(p_index)
-		var index : int = find_by_id(p_collider_data_array, _collider_id)
-		if index == -1 :
-			p_collider_data_array.append(ColliderData.new(_collider_id, _collision_normal, _collision_point, p_collision_type))
-			index = p_collider_data_array.size() - 1
-			return index
-		else :
-			p_collider_data_array[index].collision_points.append(_collision_point)
-			p_collider_data_array[index].collision_type = p_collision_type
-			p_collider_data_array[index].collision_normal = _collision_normal
-			return index
-
-
-## Class for storing common math operations
-class Math :
-	static func calculate_vector3_array_avarage(vector_array : PackedVector3Array) -> Vector3 :
-		var avarage_vector : Vector3
-		var vector_array_size : int = vector_array.size()
-		
-		if vector_array_size > 1 :
-			var summed_vector := Vector3.ZERO
-			for vector in vector_array :
-				summed_vector += vector
-				
-			avarage_vector = summed_vector / vector_array_size
-		else :
-			avarage_vector = vector_array[0]
-		
-		return avarage_vector
-
-
-## Simplifies motion testing
-class MotionTester extends RefCounted :
-	var hit    : bool = false
-	var endpos : Vector3
-	var res    := PhysicsTestMotionResult3D.new()
+	func contains_point(p_point : Vector3) -> bool :
+		for point : Vector3 in collision_points :
+			if point.is_equal_approx(p_point) :
+				return true
+		return false
 	
-	func test_motion(body : RID, from : Transform3D, motion : Vector3, margin : float = 0.001, rec : bool = false, max_cols : int = 1) -> void:
-		var params := PhysicsTestMotionParameters3D.new()
-		
-		params.from = from
-		params.motion = motion
-		params.margin = margin
-		params.exclude_bodies = [body]
-		params.recovery_as_collision = rec
-		params.max_collisions = max_cols
-		
-		hit = false
-		res = PhysicsTestMotionResult3D.new()
-		
-		hit = PhysicsServer3D.body_test_motion(body, params, res)
-		
-		endpos = from.origin + res.get_travel()
+	func concat_data_unique_only(p_collider_data : ColliderData) -> void :
+		for i : int in p_collider_data.collision_count :
+			if not contains_point(p_collider_data.collision_points[i]) :
+				collision_points.push_back(p_collider_data.collision_points[i])
+				collision_normals.push_back(p_collider_data.collision_normals[i])
+				collision_count += 1
 
 
-## Simplifies raycasting
+## Simplifies raycasting.
 class RayCast extends RefCounted :
 	var hit    : bool
 	var normal : Vector3
 	
-	func intersect(origin : Vector3 , dest : Vector3, exclude : RID, mask : int, space_state : PhysicsDirectSpaceState3D) -> void:
+	func intersect(
+		origin       : Vector3,
+		dest        : Vector3,
+		exclude     : RID,
+		mask        : int,
+		space_state : PhysicsDirectSpaceState3D
+		) -> void:
 		var ray_query := PhysicsRayQueryParameters3D.new()
-		
 		ray_query.from = origin
 		ray_query.to = dest
 		ray_query.collision_mask = mask
@@ -1834,7 +2066,6 @@ class RayCast extends RefCounted :
 		var results : Dictionary = space_state.intersect_ray(ray_query)
 		
 		hit = false
-		
 		if results.is_empty():
 			return
 		

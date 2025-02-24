@@ -14,9 +14,6 @@ export_presets.cfg
 data_*/
 mono_crash.*.json
 
-# Addons
-addons/
-
 # C# stuff
 *.sln
 *.csproj
