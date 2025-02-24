@@ -1,0 +1,50 @@
+[gd_scene load_steps=3 format=3 uid="uid://bxls4mfobreru"]
+
+[ext_resource type="Script" path="res://gui/win_menu/pages/win_main_page.gd" id="1_ibpcl"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_0uda7"]
+font_size = 42
+font_color = Color(0.933333, 1, 0, 1)
+
+[node name="WinMainPage" type="Control" node_paths=PackedStringArray("exit_button")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ibpcl")
+exit_button = NodePath("VBoxContainer/Button")
+page_name = "main_page"
+
+[node name="Label" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.1
+anchor_right = 0.5
+anchor_bottom = 0.1
+offset_left = -171.5
+offset_right = 171.5
+offset_bottom = 58.0
+grow_horizontal = 2
+text = "Level completed!"
+label_settings = SubResource("LabelSettings_0uda7")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Button" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Exit to main menu"

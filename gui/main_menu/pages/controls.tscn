@@ -1,0 +1,124 @@
+[gd_scene load_steps=5 format=3 uid="uid://del2lqb5xboj1"]
+
+[ext_resource type="Script" path="res://gui/page.gd" id="1_402kb"]
+[ext_resource type="Script" path="res://gui/page_button.gd" id="2_v5yie"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_ym5j4"]
+font_size = 36
+
+[sub_resource type="Theme" id="Theme_30cl7"]
+
+[node name="Controls" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_402kb")
+page_name = "controls"
+
+[node name="Label" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.1
+anchor_right = 0.5
+anchor_bottom = 0.1
+offset_left = -68.5
+offset_right = 68.5
+offset_bottom = 50.0
+grow_horizontal = 2
+text = "Controls"
+label_settings = SubResource("LabelSettings_ym5j4")
+
+[node name="VFlowContainer" type="GridContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -97.0
+offset_top = -71.5
+offset_right = 97.0
+offset_bottom = 71.5
+grow_horizontal = 2
+grow_vertical = 2
+theme = SubResource("Theme_30cl7")
+theme_override_constants/h_separation = 40
+columns = 2
+
+[node name="Label" type="Label" parent="VFlowContainer"]
+layout_mode = 2
+text = "Move:"
+
+[node name="Label2" type="Label" parent="VFlowContainer"]
+layout_mode = 2
+text = "WASD"
+
+[node name="Label3" type="Label" parent="VFlowContainer"]
+layout_mode = 2
+text = "Jump:"
+
+[node name="Label4" type="Label" parent="VFlowContainer"]
+layout_mode = 2
+text = "Space"
+
+[node name="Label11" type="Label" parent="VFlowContainer"]
+layout_mode = 2
+text = "Restart at latest checkpoint:"
+
+[node name="Label12" type="Label" parent="VFlowContainer"]
+layout_mode = 2
+text = "R"
+
+[node name="Label5" type="Label" parent="VFlowContainer"]
+layout_mode = 2
+text = "Activate flying move (when enabled):"
+
+[node name="Label6" type="Label" parent="VFlowContainer"]
+layout_mode = 2
+text = "V"
+
+[node name="Label9" type="Label" parent="VFlowContainer"]
+layout_mode = 2
+text = "Faster flying:"
+
+[node name="Label10" type="Label" parent="VFlowContainer"]
+layout_mode = 2
+text = "Left Shift"
+
+[node name="Label7" type="Label" parent="VFlowContainer"]
+layout_mode = 2
+text = "Swap player collision shapes (when enabled):"
+
+[node name="Label8" type="Label" parent="VFlowContainer"]
+layout_mode = 2
+text = "1 (Capsule), 2 (Cylinder), 3 (Box)"
+
+[node name="Label13" type="Label" parent="VFlowContainer"]
+layout_mode = 2
+text = "Enter sandbox and enable all debug features
+(only in main menu):"
+
+[node name="Label14" type="Label" parent="VFlowContainer"]
+layout_mode = 2
+text = "S"
+
+[node name="BackButton" type="Button" parent="." node_paths=PackedStringArray("page")]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.9
+anchor_right = 0.5
+anchor_bottom = 0.9
+offset_left = -4.0
+offset_top = -8.0
+offset_right = 4.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "Back"
+script = ExtResource("2_v5yie")
+target_page_name = "main_page"
+page = NodePath("..")

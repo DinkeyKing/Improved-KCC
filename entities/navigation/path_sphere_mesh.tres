@@ -1,0 +1,13 @@
+[gd_resource type="SphereMesh" load_steps=2 format=3 uid="uid://b5y5u81do5qnf"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_4e58u"]
+albedo_color = Color(0, 0.15, 1, 1)
+metallic = 0.5
+roughness = 0.4
+
+[resource]
+lightmap_size_hint = Vector2i(9, 5)
+material = SubResource("StandardMaterial3D_4e58u")
+add_uv2 = true
+radius = 0.25
+height = 0.5

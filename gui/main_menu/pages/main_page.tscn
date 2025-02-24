@@ -1,0 +1,72 @@
+[gd_scene load_steps=4 format=3 uid="uid://bo8rl3gl4ino3"]
+
+[ext_resource type="Script" path="res://gui/main_menu/pages/main_page.gd" id="1_uqb27"]
+[ext_resource type="Script" path="res://gui/page_button.gd" id="2_278xy"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_3copc"]
+font_size = 42
+
+[node name="TitleMenu" type="Control" node_paths=PackedStringArray("exit_button")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_uqb27")
+exit_button = NodePath("VBoxContainer/ExitButton")
+page_name = "main_page"
+
+[node name="Label" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.1
+anchor_right = 0.5
+anchor_bottom = 0.1
+offset_left = -176.0
+offset_right = 176.0
+offset_bottom = 58.0
+grow_horizontal = 2
+text = "Platformer Demo"
+label_settings = SubResource("LabelSettings_3copc")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 15
+
+[node name="LevelSelectButton" type="Button" parent="VBoxContainer" node_paths=PackedStringArray("page")]
+layout_mode = 2
+text = "Level Select"
+script = ExtResource("2_278xy")
+target_page_name = "level_select"
+page = NodePath("../..")
+
+[node name="OptionsButton" type="Button" parent="VBoxContainer" node_paths=PackedStringArray("page")]
+layout_mode = 2
+text = "Options"
+script = ExtResource("2_278xy")
+target_page_name = "options"
+page = NodePath("../..")
+
+[node name="PageButton" type="Button" parent="VBoxContainer" node_paths=PackedStringArray("page")]
+layout_mode = 2
+text = "Controls"
+script = ExtResource("2_278xy")
+target_page_name = "controls"
+page = NodePath("../..")
+
+[node name="ExitButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Exit"

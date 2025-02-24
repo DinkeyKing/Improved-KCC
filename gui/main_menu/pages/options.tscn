@@ -1,0 +1,131 @@
+[gd_scene load_steps=4 format=3 uid="uid://crtsgdt87r3w7"]
+
+[ext_resource type="Script" path="res://gui/main_menu/pages/options.gd" id="1_gsdxo"]
+[ext_resource type="Script" path="res://gui/page_button.gd" id="2_wj5du"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_ywxty"]
+font_size = 36
+
+[node name="Options" type="Control" node_paths=PackedStringArray("fullscreen_button", "mouse_sensitivity_slider", "camera_fov_slider", "player_flying_enabled_checkbutton", "player_display_speed_enabled_checkbutton", "player_draw_velocity_enabled_checkbutton", "player_collision_shape_swap_enabled_checkbutton")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_gsdxo")
+fullscreen_button = NodePath("GridContainer/FullscreenButton")
+mouse_sensitivity_slider = NodePath("GridContainer/HSlider")
+camera_fov_slider = NodePath("GridContainer/CameraFOVSlider")
+player_flying_enabled_checkbutton = NodePath("GridContainer/CheckBox")
+player_display_speed_enabled_checkbutton = NodePath("GridContainer/CheckBox2")
+player_draw_velocity_enabled_checkbutton = NodePath("GridContainer/CheckBox3")
+player_collision_shape_swap_enabled_checkbutton = NodePath("GridContainer/CheckButton")
+page_name = "options"
+
+[node name="Label" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.1
+anchor_right = 0.5
+anchor_bottom = 0.1
+offset_left = -68.5
+offset_right = 68.5
+offset_bottom = 50.0
+grow_horizontal = 2
+text = "Options"
+label_settings = SubResource("LabelSettings_ywxty")
+
+[node name="GridContainer" type="GridContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -119.0
+offset_top = -15.5
+offset_right = 119.0
+offset_bottom = 15.5
+grow_horizontal = 2
+grow_vertical = 2
+columns = 2
+
+[node name="Label" type="Label" parent="GridContainer"]
+layout_mode = 2
+text = "Window mode: "
+
+[node name="FullscreenButton" type="OptionButton" parent="GridContainer"]
+layout_mode = 2
+selected = 0
+item_count = 2
+popup/item_0/text = "Windowed"
+popup/item_1/text = "Fullscreen"
+popup/item_1/id = 1
+
+[node name="Label2" type="Label" parent="GridContainer"]
+layout_mode = 2
+text = "Mouse sensitivity:"
+
+[node name="HSlider" type="HSlider" parent="GridContainer"]
+layout_mode = 2
+min_value = 0.1
+max_value = 2.0
+step = 0.1
+value = 1.0
+
+[node name="Label3" type="Label" parent="GridContainer"]
+layout_mode = 2
+text = "Camera field of view"
+
+[node name="CameraFOVSlider" type="HSlider" parent="GridContainer"]
+layout_mode = 2
+min_value = 50.0
+max_value = 120.0
+value = 90.0
+
+[node name="Label4" type="Label" parent="GridContainer"]
+layout_mode = 2
+text = "Player flying enabled"
+
+[node name="CheckBox" type="CheckButton" parent="GridContainer"]
+layout_mode = 2
+
+[node name="Label5" type="Label" parent="GridContainer"]
+layout_mode = 2
+text = "Player display speed enabled"
+
+[node name="CheckBox2" type="CheckButton" parent="GridContainer"]
+layout_mode = 2
+
+[node name="Label6" type="Label" parent="GridContainer"]
+layout_mode = 2
+text = "Player draw velocity enabled"
+
+[node name="CheckBox3" type="CheckButton" parent="GridContainer"]
+layout_mode = 2
+
+[node name="Label7" type="Label" parent="GridContainer"]
+layout_mode = 2
+text = "Player collision shape swap enabled"
+
+[node name="CheckButton" type="CheckButton" parent="GridContainer"]
+layout_mode = 2
+
+[node name="BackButton" type="Button" parent="." node_paths=PackedStringArray("page")]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.9
+anchor_right = 0.5
+anchor_bottom = 0.9
+offset_left = -4.0
+offset_top = -8.0
+offset_right = 4.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "Back"
+script = ExtResource("2_wj5du")
+target_page_name = "main_page"
+page = NodePath("..")

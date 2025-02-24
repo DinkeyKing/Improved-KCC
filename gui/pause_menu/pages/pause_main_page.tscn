@@ -1,0 +1,68 @@
+[gd_scene load_steps=5 format=3 uid="uid://joq8yu0ijvwo"]
+
+[ext_resource type="Script" path="res://gui/page_button.gd" id="1_4lq3p"]
+[ext_resource type="Script" path="res://gui/pause_menu/pages/pause_main_page.gd" id="1_x1t20"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_u3gwk"]
+font_size = 46
+
+[sub_resource type="Theme" id="Theme_gt22f"]
+
+[node name="PauseMainPage" type="Control" node_paths=PackedStringArray("exit_button")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_x1t20")
+exit_button = NodePath("VBoxContainer/ExitButton")
+page_name = "main_page"
+
+[node name="Label" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.1
+anchor_right = 0.5
+anchor_bottom = 0.1
+offset_left = -81.0
+offset_right = 81.0
+offset_bottom = 64.0
+grow_horizontal = 2
+text = "Paused"
+label_settings = SubResource("LabelSettings_u3gwk")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -53.0
+offset_top = -15.5
+offset_right = 53.0
+offset_bottom = 15.5
+grow_horizontal = 2
+grow_vertical = 2
+theme = SubResource("Theme_gt22f")
+theme_override_constants/separation = 15
+
+[node name="OptionsButton" type="Button" parent="VBoxContainer" node_paths=PackedStringArray("page")]
+layout_mode = 2
+text = "Options"
+script = ExtResource("1_4lq3p")
+target_page_name = "options"
+page = NodePath("../..")
+
+[node name="PageButton" type="Button" parent="VBoxContainer" node_paths=PackedStringArray("page")]
+layout_mode = 2
+text = "Controls"
+script = ExtResource("1_4lq3p")
+target_page_name = "controls"
+page = NodePath("../..")
+
+[node name="ExitButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Exit to menu"

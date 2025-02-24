@@ -1,0 +1,28 @@
+[gd_scene load_steps=6 format=3 uid="uid://cockxkt20n7ci"]
+
+[ext_resource type="Script" path="res://entities/trigger/goalpoint/goalpoint.gd" id="1_emagd"]
+[ext_resource type="Material" uid="uid://bbg62psrmqt83" path="res://entities/trigger/checkpoint/checkpoint_unactive.tres" id="1_flnn0"]
+[ext_resource type="Material" uid="uid://deyp50tvnbesu" path="res://entities/trigger/checkpoint/checkpoint_active.tres" id="2_d01ui"]
+
+[sub_resource type="TorusMesh" id="TorusMesh_qe1e3"]
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_tc6o7"]
+points = PackedVector3Array(-0.977441, 0.0497648, -0.183127, 0.977439, 0.0497671, 0.183136, 0.978405, -0.0418249, 0.183316, -0.183514, -0.0418213, 0.978376, -0.11703, -0.244868, -0.79026, 0.258779, 0.248506, -0.719117, -0.143991, 0.248754, 0.748713, -0.380554, -0.244981, 0.702915, 0.767088, -0.21733, -0.412772, -0.590063, 0.22527, -0.619629, 0.523544, -0.2433, 0.610693, 0.559731, 0.224918, 0.647989, -0.78067, 0.16911, 0.510348, -0.85995, -0.218483, 0.118549, 0.395326, 0.0495687, -0.912283, 0.800759, 0.196787, -0.41499, -0.542445, -0.101449, -0.813556, 0.456757, 0.0496339, 0.883249, -0.748718, 0.248754, -0.143969, -0.151993, 0.0799481, -0.97277, -0.813562, -0.101449, 0.542434, 0.74868, 0.248758, 0.143971, -0.702767, -0.244991, -0.380738, 0.120007, -0.161201, -0.930932, 0.850308, -0.0415202, -0.516225, 0.149465, -0.190349, 0.896963, 0.790253, -0.244879, 0.11683, 0.756382, -0.071618, 0.635284, -0.302169, 0.140031, 0.907023, -0.877262, -0.0716078, -0.453794, 0.476762, -0.189752, -0.775055, 0.181609, 0.140292, 0.939131)
+
+[node name="Goalpoint" type="Area3D" node_paths=PackedStringArray("mesh_instance")]
+collision_mask = 2
+script = ExtResource("1_emagd")
+mesh_instance = NodePath("MeshInstance3D")
+active_material = ExtResource("2_d01ui")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0)
+gi_mode = 0
+mesh = SubResource("TorusMesh_qe1e3")
+surface_material_override/0 = ExtResource("1_flnn0")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0)
+shape = SubResource("ConvexPolygonShape3D_tc6o7")
+
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]

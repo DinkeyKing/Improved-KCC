@@ -1,0 +1,27 @@
+[gd_scene load_steps=6 format=3 uid="uid://bft4hpb1v7sw5"]
+
+[ext_resource type="Script" path="res://entities/trigger/checkpoint/checkpoint.gd" id="1_60aoi"]
+[ext_resource type="Material" uid="uid://deyp50tvnbesu" path="res://entities/trigger/checkpoint/checkpoint_active.tres" id="2_ce2le"]
+[ext_resource type="Material" uid="uid://bbg62psrmqt83" path="res://entities/trigger/checkpoint/checkpoint_unactive.tres" id="2_s8al6"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_pmmw7"]
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_glr5h"]
+points = PackedVector3Array(0.5, 0.5, 0.5, 0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5, -0.5, 0.5, 0.5, -0.5, -0.5, -0.5, 0.5, -0.5, -0.5, -0.5, 0.5, -0.5, -0.5, -0.5)
+
+[node name="Checkpoint" type="Area3D" node_paths=PackedStringArray("mesh_instance")]
+collision_mask = 2
+monitorable = false
+script = ExtResource("1_60aoi")
+mesh_instance = NodePath("MeshInstance3D")
+active_material = ExtResource("2_ce2le")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+gi_mode = 0
+mesh = SubResource("BoxMesh_pmmw7")
+surface_material_override/0 = ExtResource("2_s8al6")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("ConvexPolygonShape3D_glr5h")
+
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]

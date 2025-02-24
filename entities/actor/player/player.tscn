@@ -1,0 +1,64 @@
+[gd_scene load_steps=7 format=3 uid="uid://b2j2cmiomgwuk"]
+
+[ext_resource type="Script" path="res://entities/actor/player/player_body.gd" id="1_s0cn8"]
+[ext_resource type="Script" path="res://entities/actor/player/player.gd" id="1_x08b6"]
+[ext_resource type="Script" path="res://entities/actor/player/camera_controller.gd" id="2_xm16w"]
+[ext_resource type="Script" path="res://entities/actor/player/input_buffer.gd" id="3_c5fqj"]
+[ext_resource type="Shape3D" uid="uid://demx53orcdhj0" path="res://entities/actor/player/player_cylinder_shape.tres" id="3_w3fxv"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_rbrla"]
+font_size = 20
+font_color = Color(0.0833333, 1, 0, 1)
+shadow_size = 9
+shadow_color = Color(0, 0, 0, 1)
+
+[node name="Player" type="Node3D" node_paths=PackedStringArray("player_body", "speed_label")]
+script = ExtResource("1_x08b6")
+player_body = NodePath("PlayerBody")
+speed_label = NodePath("GUI/SpeedLabel")
+
+[node name="PlayerBody" type="CharacterBody3D" parent="." node_paths=PackedStringArray("head", "jump_input_buffer", "collider")]
+collision_layer = 2
+floor_max_angle = 0.698132
+script = ExtResource("1_s0cn8")
+head = NodePath("PivotY")
+jump_input_buffer = NodePath("../JumpInputBuffer")
+collider = NodePath("CollisionShape3D")
+floor_max_angle_degrees = 40.0
+floor_detach_threshold = 5.0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PlayerBody"]
+shape = ExtResource("3_w3fxv")
+
+[node name="PivotY" type="Node3D" parent="PlayerBody"]
+top_level = true
+script = ExtResource("2_xm16w")
+
+[node name="PivotX" type="Node3D" parent="PlayerBody/PivotY"]
+
+[node name="PivotZ" type="Node3D" parent="PlayerBody/PivotY/PivotX"]
+
+[node name="Camera3D" type="Camera3D" parent="PlayerBody/PivotY/PivotX/PivotZ"]
+
+[node name="GUI" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="SpeedLabel" type="Label" parent="GUI"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.25
+anchor_top = 0.25
+anchor_right = 0.262
+anchor_bottom = 0.25
+offset_right = 129.0
+offset_bottom = 28.0
+text = "Player speed: 0.00 m/s"
+label_settings = SubResource("LabelSettings_rbrla")
+
+[node name="JumpInputBuffer" type="Node" parent="."]
+script = ExtResource("3_c5fqj")
+action_name = "jump"
+buffer_window = 20

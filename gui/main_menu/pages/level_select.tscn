@@ -1,0 +1,100 @@
+[gd_scene load_steps=6 format=3 uid="uid://d3kpe2s1iokex"]
+
+[ext_resource type="Script" path="res://gui/main_menu/pages/level_select.gd" id="1_ph5s5"]
+[ext_resource type="Script" path="res://gui/data_button.gd" id="2_rj7jy"]
+[ext_resource type="Script" path="res://gui/page_button.gd" id="3_0jd1v"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_fbpps"]
+font_size = 34
+
+[sub_resource type="Theme" id="Theme_wex80"]
+
+[node name="LevelSelect" type="Control" node_paths=PackedStringArray("level_button_container")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ph5s5")
+level_button_container = NodePath("VFlowContainer")
+page_name = "level_select"
+
+[node name="LevelSelectLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.132
+anchor_right = 0.5
+anchor_bottom = 0.132
+offset_left = -96.0
+offset_right = 96.0
+offset_bottom = 47.0
+grow_horizontal = 2
+text = "Level Select"
+label_settings = SubResource("LabelSettings_fbpps")
+
+[node name="VFlowContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -97.0
+offset_top = -71.5
+offset_right = 97.0
+offset_bottom = 71.5
+grow_horizontal = 2
+grow_vertical = 2
+theme = SubResource("Theme_wex80")
+theme_override_constants/separation = 25
+
+[node name="Level1Button" type="Button" parent="VFlowContainer"]
+layout_mode = 2
+text = "Level 1"
+script = ExtResource("2_rj7jy")
+data = {
+"map_path": "res://maps/map1/map1.tscn"
+}
+
+[node name="Level2Button" type="Button" parent="VFlowContainer"]
+layout_mode = 2
+text = "Level 2"
+script = ExtResource("2_rj7jy")
+data = {
+"map_path": "res://maps/map2/map2.tscn"
+}
+
+[node name="Level3Button" type="Button" parent="VFlowContainer"]
+layout_mode = 2
+text = "Level 3"
+script = ExtResource("2_rj7jy")
+data = {
+"map_path": "res://maps/map3/map3.tscn"
+}
+
+[node name="SandboxLevelButton" type="Button" parent="VFlowContainer"]
+layout_mode = 2
+text = "Sandbox"
+script = ExtResource("2_rj7jy")
+data = {
+"map_path": "res://maps/sandbox/sandbox.tscn"
+}
+
+[node name="BackButton" type="Button" parent="." node_paths=PackedStringArray("page")]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.9
+anchor_right = 0.5
+anchor_bottom = 0.9
+offset_left = -22.5
+offset_top = -31.0
+offset_right = 22.5
+grow_horizontal = 2
+grow_vertical = 0
+text = "Back"
+script = ExtResource("3_0jd1v")
+target_page_name = "main_page"
+page = NodePath("..")
