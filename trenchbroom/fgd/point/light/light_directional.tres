@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="FuncGodotFGDPointClass" load_steps=5 format=3 uid="uid://b3kjt73khbj0d"]
+
+[ext_resource type="Script" path="res://addons/func_godot/src/fgd/func_godot_fgd_point_class.gd" id="1_etdk3"]
+[ext_resource type="Resource" uid="uid://b3df72c3uc50s" path="res://trenchbroom/fgd/base/light_base.tres" id="1_rxwyw"]
+[ext_resource type="Resource" uid="uid://cnaoxju4bygvj" path="res://trenchbroom/fgd/base/mangle_base.tres" id="2_fgddu"]
+[ext_resource type="Script" path="res://entities/light/directional_light.gd" id="2_nafqo"]
+
+[resource]
+script = ExtResource("1_etdk3")
+script_class = ExtResource("2_nafqo")
+apply_rotation_on_map_build = true
+classname = "light_directional"
+description = "A directional light."
+func_godot_internal = false
+base_classes = Array[Resource]([ExtResource("1_rxwyw"), ExtResource("2_fgddu")])
+class_properties = {}
+class_property_descriptions = {}
+meta_properties = {
+"color": Color(0.8, 0.8, 0, 1),
+"size": AABB(-8, -8, -8, 8, 8, 8)
+}
+node_class = "DirectionalLight3D"
+name_property = ""

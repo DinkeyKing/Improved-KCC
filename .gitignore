@@ -20,9 +20,6 @@ mono_crash.*.json
 *.old
 .vs/
 
-# Trenchbroom
-trenchbroom/
-
 # Recordings
 *.avi
 

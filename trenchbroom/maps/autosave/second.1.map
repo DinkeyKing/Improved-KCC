@@ -1,0 +1,27 @@
+// Game: DemoPlatformer
+// Format: Valve
+// entity 0
+{
+"mapversion" "220"
+"wad" ""
+"classname" "worldspawn"
+// brush 0
+{
+( -128 128 16 ) ( -128 -128 16 ) ( -128 -128 -16 ) dev/dev_wall [ 0 -1 0 0 ] [ 0 0 -1 0 ] 0 1 1
+( -128 -128 16 ) ( 128 -128 16 ) ( 128 -128 -16 ) dev/dev_wall [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1
+( 128 -128 -16 ) ( 128 128 -16 ) ( -128 128 -16 ) dev/dev_wall [ -1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1
+( -128 128 16 ) ( 128 128 16 ) ( 128 -128 16 ) dev/dev_floor [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1
+( 128 128 -16 ) ( 128 128 16 ) ( -128 128 16 ) dev/dev_wall [ -1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1
+( 128 -128 16 ) ( 128 128 16 ) ( 128 128 -16 ) dev/dev_wall [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1
+}
+}
+// entity 1
+{
+"classname" "actor_player"
+"origin" "-16 -16 80"
+}
+// entity 2
+{
+"classname" "light_directional"
+"origin" "53.0718 24 114.928"
+}
