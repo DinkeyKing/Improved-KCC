@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="FuncGodotFGDPointClass" load_steps=4 format=3 uid="uid://bt7wdjs7ym5lk"]
+
+[ext_resource type="Script" path="res://addons/func_godot/src/fgd/func_godot_fgd_point_class.gd" id="1_hn300"]
+[ext_resource type="Resource" uid="uid://c5raaihge5mev" path="res://trenchbroom/fgd/base/target_base.tres" id="1_mok4g"]
+[ext_resource type="Script" path="res://entities/navigation/nav_curve_control.gd" id="3_2abin"]
+
+[resource]
+script = ExtResource("1_hn300")
+script_class = ExtResource("3_2abin")
+apply_rotation_on_map_build = false
+classname = "nav_curve_control"
+description = ""
+func_godot_internal = false
+base_classes = Array[Resource]([ExtResource("1_mok4g")])
+class_properties = {
+"control_type": {
+"In": 0,
+"Out": 1
+},
+"point_index": 0
+}
+class_property_descriptions = {
+"control_type": ["In or out.", 0]
+}
+meta_properties = {
+"color": Color(0.71, 0, 0.378667, 1),
+"size": AABB(-8, -8, -8, 8, 8, 8)
+}
+node_class = "Node3D"
+name_property = ""

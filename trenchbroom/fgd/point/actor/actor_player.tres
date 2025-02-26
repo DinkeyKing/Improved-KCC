@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="FuncGodotFGDPointClass" load_steps=3 format=3 uid="uid://6iqjf581pdr8"]
+
+[ext_resource type="PackedScene" uid="uid://b2j2cmiomgwuk" path="res://entities/actor/player/player.tscn" id="1_p6lmh"]
+[ext_resource type="Script" path="res://addons/func_godot/src/fgd/func_godot_fgd_point_class.gd" id="1_sax21"]
+
+[resource]
+script = ExtResource("1_sax21")
+scene_file = ExtResource("1_p6lmh")
+apply_rotation_on_map_build = false
+classname = "actor_player"
+description = ""
+func_godot_internal = false
+base_classes = Array[Resource]([])
+class_properties = {}
+class_property_descriptions = {}
+meta_properties = {
+"color": Color(0.8, 0.8, 0.8, 1),
+"model": "{{ \"models/player_capsule.glb\" }}",
+"size": AABB(-8, -8, -8, 8, 8, 8)
+}
+node_class = ""
+name_property = ""

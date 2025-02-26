@@ -13,15 +13,15 @@ class_name PlayerBody
 
 
 @export_group("Grounded movement")
-@export var max_ground_speed                   : float = 25.0
-@export var _max_air_speed                      : float = 1.0
-@export var _ground_acceleration               : float = 40.0
-@export var _air_acceleration                   : float = 7.0
-@export var _default_floor_stop_friction_speed : float = 7.0
-@export var default_floor_move_friction_speed  : float = 5.0
-@export var air_stop_friction_speed            : float = 0.0
-@export var air_move_friction_speed            : float = 0.0
-@export var constantly_apply_gravity           : bool = false :
+@export var max_ground_speed           : float = 25.0
+@export var _max_air_speed             : float = 1.0
+@export var _ground_acceleration       : float = 40.0
+@export var _air_acceleration          : float = 7.0
+@export var ground_stop_friction_speed : float = 7.0
+@export var ground_move_friction_speed : float = 5.0
+@export var air_stop_friction_speed    : float = 0.0
+@export var air_move_friction_speed    : float = 0.0
+@export var constantly_apply_gravity   : bool = false :
 	set(value) :
 		constantly_apply_gravity = value
 		floor_stop_on_slope = not constantly_apply_gravity
@@ -33,9 +33,9 @@ class_name PlayerBody
 @export_group("Flying movement")
 @export var f_air_stop_friction_speed : float = 7.0
 @export var f_air_move_friction_speed : float = 5.0
-@export var fly_speed                  : float = 10.0
-@export var _faster_fly_speed          : float = 20.0
-@export var _fly_acceleration          : float = 40.0
+@export var max_fly_speed             : float = 25.0
+@export var _fly_acceleration         : float = 40.0
+@export var faster_fly_acceleration   : float = 80.0
 
 
 
@@ -57,7 +57,6 @@ class_name PlayerBody
 # | VARIABLES  |
 # --------------
 
-var delta_t : float    # Physics process frame time
 var movement_disabled : bool
 var coyote_timer : int
 
@@ -82,14 +81,13 @@ func _ready() -> void :
 func _physics_process(p_delta_t : float) -> void :
 	if Engine.is_editor_hint(): return
 	
-	delta_t = p_delta_t  # Set global physics frame time
-	
+	# Update coyote timer
 	if is_on_floor :
 		coyote_timer = coyote_time_length
 	elif coyote_timer:
 		coyote_timer -= 1
 	
-	set_input_velocity()
+	set_input_velocity(p_delta_t)
 	
 	move_and_slide()
 
@@ -97,29 +95,26 @@ func _physics_process(p_delta_t : float) -> void :
 
 
 ## Sets the input velocity for 'move_and_slide'
-func set_input_velocity() -> void :
+func set_input_velocity(p_delta_t : float) -> void :
 	# Determine input and floor directions
-	var wish_dir   : Vector3 = get_input_direction() if not movement_disabled else Vector3.ZERO
-	var vertical_dir : Vector3 = current_floor_normal if is_on_floor else up_direction
-	
-	# Apply gravity if needed
-	if motion_mode == MotionMode.GROUNDED and (not is_on_floor or constantly_apply_gravity) :
-		velocity += get_gravity() * delta_t
+	var input_dir : Vector3 = get_input_direction() if not movement_disabled else Vector3.ZERO
 	
 	# Determine wished speed and acceleration
-	var max_horizontal_speed  : float = 0.0
-	var accel                 : float = 0.0
-	var friction_factor       : float = 1.0
 	if motion_mode == MotionMode.GROUNDED :
 		if is_on_floor :
-			max_horizontal_speed = max_ground_speed
-			accel = _ground_acceleration
+			# NOTE: At this point our velocity is parallel to the ground, because
+			# floor snapping has ensured that.
+			
+			var ground_accel : float = _ground_acceleration
+			# Make the acceleration direction parallel to the floor
+			var ground_accel_dir : Vector3 = input_dir.slide(current_floor_normal).normalized()
 			
 			# Floor is not slippery by default
 			constantly_apply_gravity = false
 			floor_stop_on_slope = true
 			
 			# Check floor material properties, and apply changes if needed
+			var ground_friction_factor : float = 1.0
 			if current_floor_collider_encoded :
 				var floor_collider_object : Object = instance_from_id(current_floor_collider_encoded.object_id)
 				var geo_material := floor_collider_object.get("geo_material") as GeoMaterial
@@ -128,58 +123,71 @@ func set_input_velocity() -> void :
 						constantly_apply_gravity = true
 						floor_stop_on_slope = false
 					if geo_material.override_default_friction :
-						friction_factor = geo_material.friction_speed
-						accel *= friction_factor
+						ground_friction_factor = geo_material.friction_speed
+						ground_accel *= ground_friction_factor
 			
-			# Make the acceleration direction parallel to the floor
-			wish_dir = wish_dir.slide(current_floor_normal).normalized()
-			# Apply gravity in the floor direction to accelarate/decelerate on slopes
 			if not constantly_apply_gravity :
-				var gravity_vector : Vector3 = get_gravity() * delta_t
-				velocity += gravity_vector.dot(wish_dir) * wish_dir
-		else :
-			max_horizontal_speed = _max_air_speed
-			accel = _air_acceleration
+				# Apply gravity in the floor direction to accelarate/decelerate on slopes
+				var gravity_vector : Vector3 = get_gravity() * p_delta_t
+				velocity += gravity_vector.dot(ground_accel_dir) * ground_accel_dir
+			else :
+				# Apply gravity
+				velocity += get_gravity() * p_delta_t
+			
+			# Apply ground friction
+			var ground_friction_speed : float = (
+				ground_stop_friction_speed if input_dir == Vector3.ZERO
+				else ground_move_friction_speed
+			)
+			ground_friction_speed *= ground_friction_factor
+			velocity = apply_friction(velocity, ground_friction_speed, p_delta_t)
+			
+			# Apply ground acceleration
+			velocity = accelerate(
+				velocity, ground_accel, ground_accel_dir, max_ground_speed, p_delta_t
+			)
+		else :  # Air movement
+			# Apply gravity
+			velocity += get_gravity() * p_delta_t
+			
+			# Seperate vertical and horizontal velocity components
+			var vertical_velocity : Vector3 = velocity.project(up_direction)
+			var horizontal_velocity : Vector3 = velocity - vertical_velocity
+			
+			# Apply air friction
+			var air_friction_speed : float = (
+				air_stop_friction_speed if input_dir == Vector3.ZERO
+				else air_move_friction_speed
+			)
+			horizontal_velocity = apply_friction(horizontal_velocity, air_friction_speed, p_delta_t)
+			
+			# Apply air acceleration
+			horizontal_velocity = accelerate(
+				horizontal_velocity, _air_acceleration, input_dir, _max_air_speed, p_delta_t
+			)
+			
+			# Combine horizontal and vertical components
+			velocity = horizontal_velocity + vertical_velocity
+		
+		# Handle jumping
+		if coyote_timer and jump_input_buffer.is_input_just_pressed() and not movement_disabled :
+			# Make sure veolcity does not point downwards before jumping
+			velocity -= minf(0.0, velocity.dot(up_direction)) * up_direction
+			velocity += jump_impulse_length * up_direction
 	else :  # Floating mode
-		max_horizontal_speed = fly_speed if not Input.is_action_pressed("run") else _faster_fly_speed
-		accel = _fly_acceleration
-	
-	# Apply friction
-	apply_friction(not wish_dir == Vector3.ZERO, vertical_dir, friction_factor)
-	
-	# Apply acceleration
-	accelerate(accel, wish_dir, max_horizontal_speed, vertical_dir)
-	
-	# Handle jumping
-	if motion_mode == MotionMode.GROUNDED and coyote_timer and jump_input_buffer.is_input_just_pressed() and not movement_disabled :
-		# Make sure veolcity does not point downwards before jumping
-		velocity -= minf(0.0, velocity.dot(up_direction)) * up_direction
-		velocity += jump_impulse_length * up_direction
-
-
-
-
-## Applies damping to velocity
-func apply_friction(p_player_is_moving : bool, p_vertical_dir : Vector3, p_friction_factor : float) -> void :
-	# Floating mode air friction
-	if motion_mode == MotionMode.FLOATING and not p_player_is_moving :
-		var air_friction_speed : float = f_air_move_friction_speed if p_player_is_moving else f_air_stop_friction_speed
-		velocity -= velocity * air_friction_speed * delta_t
-		return
-	
-	# Grounded mode floor and air friction
-	var friction_speed : float
-	if is_on_floor :
-		friction_speed = _default_floor_stop_friction_speed if not p_player_is_moving else default_floor_move_friction_speed
-	else :
-		friction_speed = air_stop_friction_speed if not p_player_is_moving else air_move_friction_speed
-	
-	var vertical_velocity : Vector3 = velocity.project(p_vertical_dir)
-	var horizontal_velocity : Vector3 = velocity - vertical_velocity
-	var friction : Vector3 = horizontal_velocity * friction_speed * delta_t * p_friction_factor
-	var new_horizontal_velocity : Vector3 = horizontal_velocity - friction
-	
-	velocity = new_horizontal_velocity + vertical_velocity
+		# Apply air friction
+		var air_friction_speed : float = (
+			f_air_stop_friction_speed if input_dir == Vector3.ZERO
+			else f_air_move_friction_speed
+		)
+		velocity = apply_friction(velocity, air_friction_speed, p_delta_t)
+		
+		# Apply fly acceleration
+		var fly_accel_speed : float = (
+			_fly_acceleration if not Input.is_action_pressed("run")
+			else faster_fly_acceleration
+		)
+		velocity = accelerate(velocity, fly_accel_speed, input_dir, max_fly_speed, p_delta_t)
 
 
 
@@ -191,7 +199,7 @@ func get_input_direction() -> Vector3 :
 	
 	if motion_mode == MotionMode.GROUNDED :
 		input_dir_vec3 = head.transform.basis * Vector3(input_dir_vec2.x, 0.0, input_dir_vec2.y)
-	else :
+	else :  # Floating mode
 		input_dir_vec3 = head.camera.global_transform.basis * Vector3(input_dir_vec2.x, 0.0, input_dir_vec2.y)
 	
 	return input_dir_vec3
@@ -199,33 +207,40 @@ func get_input_direction() -> Vector3 :
 
 
 
+## Applies friction to the given velocity
+static func apply_friction(
+	p_velocity       : Vector3,
+	p_friction_speed : float,
+	p_delta_t        : float
+	) -> Vector3 :
+	if is_zero_approx(p_friction_speed) :
+		return p_velocity
+	
+	var friction : Vector3 = -p_velocity * p_friction_speed * p_delta_t
+	var new_velocity : Vector3 = p_velocity + friction
+	
+	return new_velocity
 
-## Accelerates the body based on player input
-func accelerate(p_accel : float, p_wish_dir : Vector3, p_max_speed : float, p_vertical_dir : Vector3) -> void :
-	if p_wish_dir.is_zero_approx() :
-		return
+
+
+
+## Applies acceleration to the given velocity
+static func accelerate(
+	p_velocity  : Vector3,
+	p_accel     : float,
+	p_accel_dir : Vector3,
+	p_max_speed : float,
+	p_delta_t   : float
+	) -> Vector3 :
+	if p_accel_dir.is_zero_approx() :
+		return p_velocity
 	
-	var accel_speed : float = p_accel * delta_t
+	# Add acceleration
+	var accel_speed  : float = p_accel * p_delta_t
+	var new_velocity : Vector3 = p_velocity + p_accel_dir * accel_speed
 	
-	if motion_mode == MotionMode.GROUNDED :
-		var vertical_velocity : Vector3 = velocity.project(p_vertical_dir)
-		var horizontal_velocity : Vector3 = velocity - vertical_velocity
-		var horizontal_velocity_length : float = horizontal_velocity.length()
-		var new_horizontal_velocity : Vector3 = horizontal_velocity
-		
-		# Apply acceleration
-		new_horizontal_velocity += p_wish_dir * accel_speed
-		
-		# Limit horizontal speed
-		var max_speed : float = maxf(p_max_speed, horizontal_velocity_length)
-		new_horizontal_velocity = new_horizontal_velocity.limit_length(max_speed)
-		
-		# Add horizontal and vertical components together
-		velocity = new_horizontal_velocity + vertical_velocity
-	else :  # Floating mode
-		var old_velocity_length : float = velocity.length()
-		
-		velocity += p_wish_dir * accel_speed
-		
-		var max_speed : float = maxf(p_max_speed, old_velocity_length)
-		velocity = velocity.limit_length(max_speed)
+	# Liimt length
+	var max_speed : float = maxf(p_max_speed, p_velocity.length())
+	new_velocity = new_velocity.limit_length(max_speed)
+	
+	return new_velocity

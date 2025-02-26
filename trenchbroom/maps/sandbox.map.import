@@ -1,0 +1,14 @@
+[remap]
+
+importer="func_godot.map"
+type="Resource"
+uid="uid://xt1xluj7fr2r"
+path="res://.godot/imported/sandbox.map-d27a40d5dfbc41df8897d8fa0c49482d.tres"
+
+[deps]
+
+source_file="res://trenchbroom/maps/sandbox.map"
+dest_files=["res://.godot/imported/sandbox.map-d27a40d5dfbc41df8897d8fa0c49482d.tres"]
+
+[params]
+

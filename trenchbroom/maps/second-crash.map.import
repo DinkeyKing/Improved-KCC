@@ -1,0 +1,14 @@
+[remap]
+
+importer="func_godot.map"
+type="Resource"
+uid="uid://cjpw3micuviio"
+path="res://.godot/imported/second-crash.map-586831b13bd5e49993f2eb0a8b1b5c2e.tres"
+
+[deps]
+
+source_file="res://trenchbroom/maps/second-crash.map"
+dest_files=["res://.godot/imported/second-crash.map-586831b13bd5e49993f2eb0a8b1b5c2e.tres"]
+
+[params]
+

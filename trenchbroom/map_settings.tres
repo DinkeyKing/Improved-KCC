@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="FuncGodotMapSettings" load_steps=4 format=3 uid="uid://3khp628pv7e6"]
+
+[ext_resource type="Material" uid="uid://cm2i6j1u6lofo" path="res://trenchbroom/textures/default_material.tres" id="1_gmwqj"]
+[ext_resource type="Resource" uid="uid://bfb7jjxuhknt2" path="res://trenchbroom/fgd/demo_platformer_fgd.tres" id="2_rw500"]
+[ext_resource type="Script" path="res://addons/func_godot/src/map/func_godot_map_settings.gd" id="3_8tg2p"]
+
+[resource]
+script = ExtResource("3_8tg2p")
+inverse_scale_factor = 32.0
+entity_fgd = ExtResource("2_rw500")
+entity_name_property = ""
+base_texture_dir = "res://trenchbroom/textures"
+texture_file_extensions = Array[String](["png", "jpg", "jpeg", "bmp", "tga", "webp"])
+clip_texture = "special/clip"
+skip_texture = "special/skip"
+texture_wads = Array[Resource]([])
+material_file_extension = "tres"
+default_material = ExtResource("1_gmwqj")
+default_material_albedo_uniform = ""
+albedo_map_pattern = "%s_albedo.%s"
+normal_map_pattern = "%s_normal.%s"
+metallic_map_pattern = "%s_metallic.%s"
+roughness_map_pattern = "%s_roughness.%s"
+emission_map_pattern = "%s_emission.%s"
+ao_map_pattern = "%s_ao.%s"
+height_map_pattern = "%s_height.%s"
+orm_map_pattern = "%s_orm.%s"
+unshaded = false
+save_generated_materials = true
+uv_unwrap_texel_size = 2.0
+use_trenchbroom_groups_hierarchy = false

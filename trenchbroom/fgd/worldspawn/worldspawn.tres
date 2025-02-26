@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="FuncGodotFGDSolidClass" load_steps=3 format=3 uid="uid://c4ibi5g5p0nt1"]
+
+[ext_resource type="Script" path="res://addons/func_godot/src/fgd/func_godot_fgd_solid_class.gd" id="1_d5ynn"]
+[ext_resource type="Script" path="res://entities/worldspawn/worldspawn.gd" id="2_pq4qi"]
+
+[resource]
+script = ExtResource("1_d5ynn")
+spawn_type = 0
+origin_type = 0
+build_visuals = false
+use_in_baked_light = true
+shadow_casting_setting = 1
+build_occlusion = true
+render_layers = 1
+collision_shape_type = 0
+collision_layer = 1
+collision_mask = 0
+collision_priority = 1.0
+collision_shape_margin = 0.04
+script_class = ExtResource("2_pq4qi")
+classname = "worldspawn"
+description = "Sets up a WorldEnvironment node."
+func_godot_internal = false
+base_classes = Array[Resource]([])
+class_properties = {
+"ambient_color": Color(1, 1, 1, 1),
+"ambient_light": 0.0,
+"bg_color": Color(0, 0, 0, 1),
+"lit_bounces": 3,
+"lit_denoiser": 1,
+"lit_probes_subdiv": 2,
+"lit_quality": 1,
+"sky": "blue_sunset",
+"sky_rotation": Vector3(0, 0, 0)
+}
+class_property_descriptions = {}
+meta_properties = {
+"color": Color(0.8, 0.8, 0.8, 1)
+}
+node_class = "WorldEnvironment"
+name_property = ""

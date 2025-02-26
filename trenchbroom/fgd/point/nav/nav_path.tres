@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="FuncGodotFGDPointClass" load_steps=4 format=3 uid="uid://b2jmvkmmkixtg"]
+
+[ext_resource type="Script" path="res://addons/func_godot/src/fgd/func_godot_fgd_point_class.gd" id="1_2hgib"]
+[ext_resource type="Resource" uid="uid://b5tksws6mn5ng" path="res://trenchbroom/fgd/base/targetname_base.tres" id="1_ebav0"]
+[ext_resource type="Script" path="res://entities/navigation/nav_path.gd" id="2_nl4r5"]
+
+[resource]
+script = ExtResource("1_2hgib")
+script_class = ExtResource("2_nl4r5")
+apply_rotation_on_map_build = false
+classname = "nav_path"
+description = ""
+func_godot_internal = false
+base_classes = Array[Resource]([ExtResource("1_ebav0")])
+class_properties = {}
+class_property_descriptions = {}
+meta_properties = {
+"color": Color(0.786667, 0, 0.8, 1),
+"size": AABB(-8, -8, -8, 8, 8, 8)
+}
+node_class = "Path3D"
+name_property = ""

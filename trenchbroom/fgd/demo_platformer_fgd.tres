@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="FuncGodotFGDFile" load_steps=18 format=3 uid="uid://bfb7jjxuhknt2"]
+
+[ext_resource type="Script" path="res://addons/func_godot/src/fgd/func_godot_fgd_file.gd" id="1_6rwy7"]
+[ext_resource type="Resource" uid="uid://ecdvu27hwpdp" path="res://trenchbroom/fgd/func_godot/func_godot_fgd.tres" id="1_jcpn8"]
+[ext_resource type="Resource" uid="uid://6iqjf581pdr8" path="res://trenchbroom/fgd/point/actor/actor_player.tres" id="2_ggmxt"]
+[ext_resource type="Resource" uid="uid://c4ibi5g5p0nt1" path="res://trenchbroom/fgd/worldspawn/worldspawn.tres" id="3_xbufc"]
+[ext_resource type="Resource" uid="uid://b3kjt73khbj0d" path="res://trenchbroom/fgd/point/light/light_directional.tres" id="4_1ias8"]
+[ext_resource type="Resource" uid="uid://b3df72c3uc50s" path="res://trenchbroom/fgd/base/light_base.tres" id="5_vfnd0"]
+[ext_resource type="Resource" uid="uid://cnaoxju4bygvj" path="res://trenchbroom/fgd/base/mangle_base.tres" id="6_2d6e7"]
+[ext_resource type="Resource" uid="uid://b2jmvkmmkixtg" path="res://trenchbroom/fgd/point/nav/nav_path.tres" id="7_7jtr8"]
+[ext_resource type="Resource" uid="uid://cg8oj63l8dwtn" path="res://trenchbroom/fgd/point/nav/nav_curve_point.tres" id="8_kkx3d"]
+[ext_resource type="Resource" uid="uid://cc53jvwfsrb6m" path="res://trenchbroom/fgd/solid/func_mover.tres" id="9_o8ar0"]
+[ext_resource type="Resource" uid="uid://c5raaihge5mev" path="res://trenchbroom/fgd/base/target_base.tres" id="10_aep1u"]
+[ext_resource type="Resource" uid="uid://b5tksws6mn5ng" path="res://trenchbroom/fgd/base/targetname_base.tres" id="11_37puv"]
+[ext_resource type="Resource" uid="uid://bt7wdjs7ym5lk" path="res://trenchbroom/fgd/point/nav/nav_curve_control.tres" id="12_xmfyx"]
+[ext_resource type="Resource" uid="uid://d1vxu86i8dwxi" path="res://trenchbroom/fgd/point/prop/prop_crate.tres" id="13_6n4ty"]
+[ext_resource type="Resource" uid="uid://dhvatp2elvqpd" path="res://trenchbroom/fgd/point/trigger/checkpoint.tres" id="14_wq3tx"]
+[ext_resource type="Resource" uid="uid://doyoyd38qbkn4" path="res://trenchbroom/fgd/base/geo_base.tres" id="15_g0mmr"]
+[ext_resource type="Resource" uid="uid://djkjgctu3fewf" path="res://trenchbroom/fgd/point/trigger/goalpoint.tres" id="16_wjdwf"]
+
+[resource]
+script = ExtResource("1_6rwy7")
+export_file = false
+target_map_editor = 1
+fgd_name = "DemoPlatformer"
+base_fgd_files = Array[Resource]([ExtResource("1_jcpn8")])
+entity_definitions = Array[Resource]([ExtResource("2_ggmxt"), ExtResource("3_xbufc"), ExtResource("4_1ias8"), ExtResource("5_vfnd0"), ExtResource("6_2d6e7"), ExtResource("7_7jtr8"), ExtResource("8_kkx3d"), ExtResource("9_o8ar0"), ExtResource("10_aep1u"), ExtResource("11_37puv"), ExtResource("12_xmfyx"), ExtResource("13_6n4ty"), ExtResource("14_wq3tx"), ExtResource("15_g0mmr"), ExtResource("16_wjdwf")])

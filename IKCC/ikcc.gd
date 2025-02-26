@@ -182,83 +182,96 @@ var wall_min_slide_angle_degrees : float = 15.0 :
 # --------------
 
 
-## [code]true[/code] if the body is touching a floor. Set during [method move_and_slide]. [br]
+## [code]true[/code] if the body is touching a floor. [br] 
+## Set during [method move_and_slide].
 var is_on_floor                     : bool
-## [code]true[/code] if the body is touching a wall. Set during [method move_and_slide].
+## [code]true[/code] if the body is touching a wall. [br] 
+## Set during [method move_and_slide].
 var is_on_wall                      : bool
-## [code]true[/code] if the body is touching a ceiling. Set during [method move_and_slide].
+## [code]true[/code] if the body is touching a ceiling. [br]
+## Set during [method move_and_slide].
 var is_on_ceiling                   : bool
-## [code]true[/code] if the body collided with a floor. Set during [method move_and_slide].
+## [code]true[/code] if the body collided with a floor. [br]
+## Set during [method move_and_slide].
 var collided_with_floor             : bool
-## [code]true[/code] if the body collided with a wall. Set during [method move_and_slide].
+## [code]true[/code] if the body collided with a wall. [br]
+## Set during [method move_and_slide].
 var collided_with_wall              : bool
-## [code]true[/code] if the body collided with a ceiling. Set during [method move_and_slide].
+## [code]true[/code] if the body collided with a ceiling. [br]
+## Set during [method move_and_slide].
 var collided_with_ceiling           : bool
-## [code]true[/code] if the body is touching a floor surface. Set during [method move_and_slide].
+## [code]true[/code] if the body is touching a floor surface. [br]
+## Set during [method move_and_slide].
 var is_on_floor_surface             : bool
-## [code]true[/code] if the body performed a step move. Set during [method move_and_slide].
+## [code]true[/code] if the body performed a step move. [br]
+## Set during [method move_and_slide].
 var has_stepped                     : bool
-## [code]true[/code] if the body is touched a floor in the previous call to [method move_and_slide].
+## [code]true[/code] if the body is touched a floor in the previous call to [method move_and_slide]. [br]
 ## Set during [method move_and_slide].
 var prev_on_floor                   : bool
-## [code]true[/code] if the body is touched a floor surface in the previous call to [method move_and_slide].
+## [code]true[/code] if the body is touched a floor surface in the previous call to [method move_and_slide]. [br]
 ## Set during [method move_and_slide].
 var prev_on_floor_surface           : bool
-## [code]true[/code] if platform velocity was valid in the previous call to [method move_and_slide].
+## [code]true[/code] if platform velocity was valid in the previous call to [method move_and_slide]. [br]
+## Set during [method move_and_slide].
 var prev_platform_velocity_valid    : bool
 ## The linear velocity of the body.
 var velocity                        : Vector3
-## The position delta divided by delta time.
+## The position delta divided by delta time. [br]
 ## Set during [method move_and_slide].
 var real_velocity                   : Vector3
 ## The travel vector from the last call to [method move_and_slide].
 var delta_position                  : Vector3
-## The normal of the deepest active floor collision. If the body is not touching a floor, it's a zero vector.
+## The normal of the deepest active floor collision. If the body is not touching a floor, it's a zero vector. [br]
 ## Set during [method move_and_slide].
 var current_floor_normal            : Vector3
-## The normal of the deepest active wall collision. If the body is not touching a wall, it's a zero vector.
+## The normal of the deepest active wall collision. If the body is not touching a wall, it's a zero vector. [br]
 ## Set during [method move_and_slide].
 var current_wall_normal             : Vector3
-## The normal of the deepest active ceiling collision. If the body is not touching a ceiling, it's a zero vector.
+## The normal of the deepest active ceiling collision. If the body is not touching a ceiling, it's a zero vector. [br]
 ## Set during [method move_and_slide].
 var current_ceiling_normal          : Vector3
-## The normal of the latest floor collision. If the body did not collide with a floor, it's a zero vector.
+## The normal of the latest floor collision. If the body did not collide with a floor, it's a zero vector. [br]
 ## Set during [method move_and_slide].
 var last_floor_normal               : Vector3
-## The normal of the latest wall collision. If the body did not collide with a wall, it's a zero vector.
+## The normal of the latest wall collision. If the body did not collide with a wall, it's a zero vector. [br]
 ## Set during [method move_and_slide].
 var last_wall_normal                : Vector3
-## The normal of the latest ceiling collision. If the body did not collide with a ceiling, it's a zero vector.
+## The normal of the latest ceiling collision. If the body did not collide with a ceiling, it's a zero vector. [br]
 ## Set during [method move_and_slide].
 var last_ceiling_normal             : Vector3
 ## The velocity of the floor collider at the position of the character body. If the body is not on
-## a floor, it's a zero vector.
+## a floor, it's a zero vector. [br]
 ## Set during [method move_and_slide].
 var platform_velocity               : Vector3
-## The velocity the body hit the ground with arriving from air. If that didn't happen, it's a zero vector.
+## The velocity the body hit the ground with arriving from air. If that didn't happen, it's a zero vector. [br]
 ## Set during [method move_and_slide].
 var floor_impact_velocity           : Vector3
-## The global position of the body before the latest call to [method move_and_slide].
+## The global position of the body before the latest call to [method move_and_slide]. [br]
 ## Set during [method move_and_slide].
 var previous_position               : Vector3
-## Stores the id of the current floor collider the body is touching.
+## Stores the id of the current floor collider the body is touching. [br]
 ## Set during [method move_and_slide].
 var current_floor_collider_encoded  : EncodedObjectAsID
-## The RID of the current floor collider the body is touching.
+## The RID of the current floor collider the body is touching. [br]
 ## Set during [method move_and_slide].
 var current_floor_collider_rid      : RID
-## An array of data objects that holds collision data sorted by colliders.
+## An array of data objects that holds collision data sorted by colliders. [br]
 ## Set during [method move_and_slide].
 var collider_datas                  : Array[ColliderData]
 ## An array of data objects that stores information about the collisions that happened
-## during the latest call to [method move_and_slide].
+## during the latest call to [method move_and_slide]. [br]
 ## Does not include collision data of the final touch collision check and floor snaps.
 var collision_states                : Array[CollisionState]
-## ## The collision data of the latest floor snap.
-## Set during [method move_and_slide] and [method snap_to_floor].
+## ## The collision data of the latest floor snap. [br]
+## Set during [method move_and_slide] and [method snap_to_floor]. [br]
+## [b]Note:[/b] Wall and ceiling collisions are not registered by floor snapping.
 var snap_collision_state            : CollisionState
-## The collision data of the last collision check at the final position of the body.
-## Set during [method move_and_slide].
+## The collision data of the last collision check at the final position of the body. [br]
+## Set during [method move_and_slide]. [br]
+## [b]Note:[/b] Floor collisions are not registered in this object, because floor status
+## at the final position is detected exclusively by floor snapping.
+## Check [member snap_collision_state] for the final registered floor data.
 var touch_collision_state           : CollisionState
 
 # Translate angle properties to radian when initialising

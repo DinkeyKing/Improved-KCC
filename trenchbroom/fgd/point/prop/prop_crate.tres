@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="FuncGodotFGDPointClass" load_steps=3 format=3 uid="uid://d1vxu86i8dwxi"]
+
+[ext_resource type="PackedScene" uid="uid://bitwt1kae8s15" path="res://entities/prop/crate/wooden_crate.tscn" id="1_3gsh1"]
+[ext_resource type="Script" path="res://addons/func_godot/src/fgd/func_godot_fgd_point_class.gd" id="1_q62g8"]
+
+[resource]
+script = ExtResource("1_q62g8")
+scene_file = ExtResource("1_3gsh1")
+apply_rotation_on_map_build = true
+classname = "prop_crate"
+description = ""
+func_godot_internal = false
+base_classes = Array[Resource]([])
+class_properties = {
+"debug_impulse_enabled": true
+}
+class_property_descriptions = {}
+meta_properties = {
+"color": Color(0.8, 0.8, 0.8, 1),
+"model": "{{ \"models/wooden_crate1.glb\" }}",
+"size": AABB(-8, -8, -8, 8, 8, 8)
+}
+node_class = ""
+name_property = ""

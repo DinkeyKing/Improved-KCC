@@ -1,0 +1,12 @@
+Renderer info: AMD Radeon RX 6700 XT version 4.6.0 Compatibility Profile Context 24.1.1.240110 from ATI Technologies Inc.
+Depth buffer bits: 24
+Multisampling enabled
+Adding file system path "D:/Gamedev/TrenchBroom\\defaults\\assets"
+Adding file system path "D:/Gamedev/Godot/Projects/demoplatformer/trenchbroom\\."
+Loading document from D:\Gamedev\Godot\Projects\demoplatformer\trenchbroom\maps\second.map
+Loaded entity definition file DemoPlatformer.fgd
+Loaded texture collection '"textures"'
+Loaded texture collection '"textures\\dev"'
+Loaded texture collection '"textures\\special"'
+Loaded "D:\\Gamedev\\Godot\\Projects\\demoplatformer\\trenchbroom\\maps\\second.map" in 589ms
+Reloading entity definitions
