@@ -7,7 +7,7 @@ The `IKCC` class is a general purpose 3D kinematic/virtual body implemented in G
 I highly recommend using Godot Jolt (Jolt Physics) for the physics server implementation!
 https://github.com/godot-jolt/godot-jolt
 
-The demo project includes an example character controller implemented with IKCC, as well as some simple platforming levels, and a sandbox environment.
+The demo project includes an [`example character controller`][xpl] implemented with IKCC, as well as some simple platforming levels, and a sandbox environment.
 
 I took a lot of inspiration from Jolt Physics' CharacterVirtual:
 https://github.com/jrouwe/JoltPhysics/blob/d6e015372b08f28c3c62e9aaab9a5cb2af667e54/Jolt/Physics/Character/CharacterVirtual.cpp
@@ -61,3 +61,4 @@ https://github.com/godot-jolt/godot-jolt
 
 [spt]: IKCC/ikcc.gd
 [gde]: IKCC/guide.md
+[xpl]: entities/actor/player/player_body.gd
