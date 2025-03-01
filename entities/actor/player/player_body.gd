@@ -102,9 +102,6 @@ func set_input_velocity(p_delta_t : float) -> void :
 	# Determine wished speed and acceleration
 	if motion_mode == MotionMode.GROUNDED :
 		if is_on_floor :
-			# NOTE: At this point our velocity is parallel to the ground, because
-			# floor snapping has ensured that.
-			
 			var ground_accel : float = _ground_acceleration
 			# Make the acceleration direction parallel to the floor
 			var ground_accel_dir : Vector3 = input_dir.slide(current_floor_normal).normalized()
@@ -126,6 +123,7 @@ func set_input_velocity(p_delta_t : float) -> void :
 						ground_friction_factor = geo_material.friction_speed
 						ground_accel *= ground_friction_factor
 			
+			# Handle gravity
 			if not constantly_apply_gravity :
 				# Apply gravity in the floor direction to accelarate/decelerate on slopes
 				var gravity_vector : Vector3 = get_gravity() * p_delta_t

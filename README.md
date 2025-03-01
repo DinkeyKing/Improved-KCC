@@ -2,7 +2,7 @@
 
 The `IKCC` class is a general purpose 3D kinematic/virtual body implemented in GDScript, which acts as an alternative to the built-in `CharacterBody3D` class. It implements all of it's features, provides new ones, and is just as easy to use.
 
-`IKCC` has notable differences compared to `CharacterBody3D`, see the [`guide`][gde] for details.
+Some logic in character controllers written for `CharacterBody3D` might not translate well to `IKCC`, see the [`guide`][gde] for details.
 
 I highly recommend using Godot Jolt (Jolt Physics) for the physics server implementation!
 https://github.com/godot-jolt/godot-jolt
@@ -60,5 +60,5 @@ https://godotengine.org/asset-library/asset/1766
 https://github.com/godot-jolt/godot-jolt
 
 [spt]: IKCC/ikcc.gd
-[gde]: IKCC/guide.md
+[gde]: IKCC/guide/guide.md
 [xpl]: entities/actor/player/player_body.gd

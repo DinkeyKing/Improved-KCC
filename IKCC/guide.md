@@ -1,3 +1,0 @@
-# IKCC Guide
-
-TODO
