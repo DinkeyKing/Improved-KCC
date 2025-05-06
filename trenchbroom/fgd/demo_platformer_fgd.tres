@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="FuncGodotFGDFile" load_steps=18 format=3 uid="uid://bfb7jjxuhknt2"]
 
-[ext_resource type="Script" path="res://addons/func_godot/src/fgd/func_godot_fgd_file.gd" id="1_6rwy7"]
+[ext_resource type="Script" uid="uid://bqf4ucnj8fio0" path="res://addons/func_godot/src/fgd/func_godot_fgd_file.gd" id="1_6rwy7"]
 [ext_resource type="Resource" uid="uid://ecdvu27hwpdp" path="res://trenchbroom/fgd/func_godot/func_godot_fgd.tres" id="1_jcpn8"]
 [ext_resource type="Resource" uid="uid://6iqjf581pdr8" path="res://trenchbroom/fgd/point/actor/actor_player.tres" id="2_ggmxt"]
 [ext_resource type="Resource" uid="uid://c4ibi5g5p0nt1" path="res://trenchbroom/fgd/worldspawn/worldspawn.tres" id="3_xbufc"]

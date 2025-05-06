@@ -1,6 +1,6 @@
 [gd_scene load_steps=6 format=3 uid="uid://bft4hpb1v7sw5"]
 
-[ext_resource type="Script" path="res://entities/trigger/checkpoint/checkpoint.gd" id="1_60aoi"]
+[ext_resource type="Script" uid="uid://b77jutxljgkgh" path="res://entities/trigger/checkpoint/checkpoint.gd" id="1_60aoi"]
 [ext_resource type="Material" uid="uid://deyp50tvnbesu" path="res://entities/trigger/checkpoint/checkpoint_active.tres" id="2_ce2le"]
 [ext_resource type="Material" uid="uid://bbg62psrmqt83" path="res://entities/trigger/checkpoint/checkpoint_unactive.tres" id="2_s8al6"]
 

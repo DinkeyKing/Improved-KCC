@@ -1,16 +1,16 @@
 [gd_scene load_steps=270 format=4 uid="uid://cjeu1mpdkgup3"]
 
 [ext_resource type="LightmapGIData" uid="uid://2prionavch78" path="res://maps/map1/map1.lmbake" id="1_e33p5"]
-[ext_resource type="Script" path="res://addons/func_godot/src/map/func_godot_map.gd" id="1_u5xd8"]
+[ext_resource type="Script" uid="uid://w2wcc13yb21q" path="res://addons/func_godot/src/map/func_godot_map.gd" id="1_u5xd8"]
 [ext_resource type="Resource" uid="uid://3khp628pv7e6" path="res://trenchbroom/map_settings.tres" id="2_er10t"]
-[ext_resource type="Script" path="res://entities/worldspawn/worldspawn.gd" id="3_j6p08"]
+[ext_resource type="Script" uid="uid://cfh5vajqb5p3n" path="res://entities/worldspawn/worldspawn.gd" id="3_j6p08"]
 [ext_resource type="PackedScene" uid="uid://b2j2cmiomgwuk" path="res://entities/actor/player/player.tscn" id="4_5ogtc"]
 [ext_resource type="Sky" uid="uid://ofyyv0os8wb4" path="res://skyboxes/blue_sunset/blue_sunset.tres" id="4_jdy36"]
 [ext_resource type="Material" uid="uid://dlv5w36eicgn7" path="res://trenchbroom/textures/dev/dev_floor.tres" id="5_fup80"]
-[ext_resource type="Script" path="res://entities/light/directional_light.gd" id="6_1mnha"]
+[ext_resource type="Script" uid="uid://okubh2aq5puy" path="res://entities/light/directional_light.gd" id="6_1mnha"]
 [ext_resource type="Material" uid="uid://bebnc2mmav8hl" path="res://trenchbroom/textures/dev/dev_wall.tres" id="7_0kgkv"]
-[ext_resource type="Script" path="res://entities/func/func_geo.gd" id="7_5spke"]
-[ext_resource type="Script" path="res://entities/func/geo_material.gd" id="8_osfnw"]
+[ext_resource type="Script" uid="uid://b38vd53cdag6a" path="res://entities/func/func_geo.gd" id="7_5spke"]
+[ext_resource type="Script" uid="uid://yf01stiswy40" path="res://entities/func/geo_material.gd" id="8_osfnw"]
 [ext_resource type="Material" uid="uid://cfl4436mf0fax" path="res://trenchbroom/textures/dev/dev_green.tres" id="12_gscdr"]
 [ext_resource type="PackedScene" uid="uid://bft4hpb1v7sw5" path="res://entities/trigger/checkpoint/checkpoint.tscn" id="13_fqfyc"]
 [ext_resource type="PackedScene" uid="uid://cockxkt20n7ci" path="res://entities/trigger/goalpoint/goalpoint.tscn" id="14_4vc4y"]
@@ -32,7 +32,7 @@ adjustment_enabled = true
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_2vha6"]
@@ -72,7 +72,7 @@ data = PackedVector3Array(-22.75, 2.25, -0.25, -22.75, -2.25, -0.25, 22.75, -2.2
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_otyx2"]
@@ -112,7 +112,7 @@ data = PackedVector3Array(-0.25, 0.25, -5, -0.25, -0.25, -5, 0.25, -0.25, -5, -0
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_4ljny"]
@@ -152,7 +152,7 @@ data = PackedVector3Array(-31.25, 2.25, -0.25, -31.25, -2.25, -0.25, 31.25, -2.2
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_42u6t"]
@@ -192,7 +192,7 @@ data = PackedVector3Array(-4, 0.5, -17.5, -4, -0.5, -17.5, 4, -0.5, -17.5, -4, 0
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_lc5ie"]
@@ -232,7 +232,7 @@ data = PackedVector3Array(-0.25, 2.25, -33.5, -0.25, -2.25, -33.5, 0.25, -2.25, 
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_0sfnr"]
@@ -272,7 +272,7 @@ data = PackedVector3Array(-8, 0.5, -5, -8, -0.5, -5, 8, -0.5, -5, -8, 0.5, -5, 8
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_xjvwe"]
@@ -312,7 +312,7 @@ data = PackedVector3Array(-0.25, 2.25, -24.25, -0.25, -2.25, -24.25, 0.25, -2.25
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_mm8c3"]
@@ -352,7 +352,7 @@ data = PackedVector3Array(-4, 0.25, -0.5, -4, -0.25, -0.5, 4, -0.25, -0.5, -4, 0
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_lt0uw"]
@@ -392,7 +392,7 @@ data = PackedVector3Array(-4, 0.5, -1, -4, -0.5, -1, 4, -0.5, -1, -4, 0.5, -1, 4
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_8myv3"]
@@ -432,7 +432,7 @@ data = PackedVector3Array(-4, 0.75, -0.5, -4, -0.75, -0.5, 4, -0.75, -0.5, -4, 0
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_2xx0a"]
@@ -472,7 +472,7 @@ data = PackedVector3Array(-4, 0.25, -0.5, -4, -0.25, -0.5, 4, -0.25, -0.5, -4, 0
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_r7lgo"]
@@ -512,7 +512,7 @@ data = PackedVector3Array(-0.25, 2.25, -1.5, -0.25, -2.25, -1.5, 0.25, -2.25, -1
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_ialgo"]
@@ -570,7 +570,7 @@ data = PackedVector3Array(-0.125, 0.25, -1.25, -0.125, -0.25, -1.25, 0.125, -0.2
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_kt4ru"]
@@ -610,7 +610,7 @@ data = PackedVector3Array(-4, 1, -4, -4, -1, -4, 4, -1, -4, -4, 1, -4, 4, -1, -4
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_g6phd"]
@@ -650,7 +650,7 @@ data = PackedVector3Array(-4, 1, -2.5, -4, -1, -2.5, 4, -1, -2.5, -4, 1, -2.5, 4
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_otyp6"]
@@ -690,7 +690,7 @@ data = PackedVector3Array(-4, 1, -0.25, -4, -1, -0.25, 4, -1, -0.25, -4, 1, -0.2
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_fnif8"]
@@ -730,7 +730,7 @@ data = PackedVector3Array(-4, 0.5, -0.5, -4, -0.5, -0.5, 4, -0.5, -0.5, -4, 0.5,
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_my72s"]
@@ -770,7 +770,7 @@ data = PackedVector3Array(-4, 3, -0.25, -4, -3, -0.25, 4, -3, -0.25, -4, 3, -0.2
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_a83sm"]
@@ -810,7 +810,7 @@ data = PackedVector3Array(-22.75, 4.25, -0.25, -22.75, -4.25, -0.25, 22.75, -4.2
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_akryn"]
@@ -850,7 +850,7 @@ data = PackedVector3Array(-27.25, 4.25, -0.25, -27.25, -4.25, -0.25, 27.25, -4.2
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_iflxh"]
@@ -890,7 +890,7 @@ data = PackedVector3Array(-2, 0.5, -4, -2, -0.5, -4, 2, -0.5, -4, -2, 0.5, -4, 2
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_8ixcs"]
@@ -919,7 +919,7 @@ data = PackedVector3Array(0.333333, 0.666667, -4, -0.666667, -0.333333, -4, 0.33
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_x8bwt"]
@@ -959,7 +959,7 @@ data = PackedVector3Array(0.666667, 0.666667, -4, -1.33333, -0.333333, -4, 0.666
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_tgwef"]
@@ -999,7 +999,7 @@ data = PackedVector3Array(-2, 0.5, -4, -2, -0.5, -4, 2, -0.5, -4, -2, 0.5, -4, 2
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_bdggu"]
@@ -1039,7 +1039,7 @@ data = PackedVector3Array(-2.89583, 1.6875, -1, -6.89583, -0.8125, -1, -2.89583,
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_sc5eo"]
@@ -1079,7 +1079,7 @@ data = PackedVector3Array(-2.75, 0.25, -1.5, -2.75, -0.25, -1.5, 2.75, -0.25, -1
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_msyh7"]
@@ -1119,7 +1119,7 @@ data = PackedVector3Array(1.33333, 1.66667, -0.75, -2.66667, -0.833333, -0.75, 1
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_4ctr1"]
@@ -1148,7 +1148,7 @@ data = PackedVector3Array(-0.833332, 1.66667, -1.5, -0.833332, -0.833333, -1.5, 
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_c4puy"]
@@ -1177,7 +1177,7 @@ data = PackedVector3Array(-0.833332, 1.66667, -1.5, -0.833332, -0.833333, -1.5, 
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_xeknc"]
@@ -1206,7 +1206,7 @@ data = PackedVector3Array(-0.833332, 1.66667, -1.5, -0.833332, -0.833333, -1.5, 
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_muebn"]
@@ -1246,7 +1246,7 @@ data = PackedVector3Array(-0.25, 2, -2.5, -0.25, -2, -2.5, 0.25, -2, -2.5, -0.25
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_6ntiw"]
@@ -1286,7 +1286,7 @@ data = PackedVector3Array(0.416668, 0.958333, -0.75, 0.416668, 0.458333, -0.75, 
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_wocp4"]
@@ -1326,7 +1326,7 @@ data = PackedVector3Array(-4, 0.25, -6, -4, -0.25, -6, 4, -0.25, -6, -4, 0.25, -
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_yag4f"]
@@ -1366,7 +1366,7 @@ data = PackedVector3Array(-0.25, 3.25, -33.5, -0.25, -3.25, -33.5, 0.25, -3.25, 
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_enelx"]
@@ -1406,7 +1406,7 @@ data = PackedVector3Array(-4, 0.25, -2, -4, -0.25, -2, 4, -0.25, -2, -4, 0.25, -
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_qka2l"]
@@ -1446,7 +1446,7 @@ data = PackedVector3Array(-0.25, 4.25, -28, -0.25, -4.25, -28, 0.25, -4.25, -28,
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_mde8h"]
@@ -1486,7 +1486,7 @@ data = PackedVector3Array(-1.5, 0.25, -1, -1.5, -0.25, -1, 1.5, -0.25, -1, -1.5,
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_e53gc"]
@@ -1526,7 +1526,7 @@ data = PackedVector3Array(-1.5, 0.25, -1, -1.5, -0.25, -1, 1.5, -0.25, -1, -1.5,
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_s5dm0"]
@@ -1566,7 +1566,7 @@ data = PackedVector3Array(-2.75, 0.25, -1, -2.75, -0.25, -1, 2.75, -0.25, -1, -2
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_r1k4u"]
@@ -1606,7 +1606,7 @@ data = PackedVector3Array(-4, 0.25, -2.875, -4, -0.25, -2.875, 4, -0.25, -2.875,
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_igtca"]
@@ -1646,7 +1646,7 @@ data = PackedVector3Array(-4, -1.66667, -1, 4, -1.66667, -1, 4, 0.833333, -1, -4
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_nnbpx"]
@@ -1722,7 +1722,7 @@ data = PackedVector3Array(-0.125, 0.25, -0.25, -0.125, -0.25, -0.25, 0.125, -0.2
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_6woay"]
@@ -1762,7 +1762,7 @@ data = PackedVector3Array(-0.25, 0.25, -5, -0.25, -0.25, -5, 0.25, -0.25, -5, -0
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_4arwt"]
@@ -1802,7 +1802,7 @@ data = PackedVector3Array(-0.25, 0.25, -5, -0.25, -0.25, -5, 0.25, -0.25, -5, -0
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_0dw4x"]
@@ -1842,7 +1842,7 @@ data = PackedVector3Array(-0.25, 0.25, -5, -0.25, -0.25, -5, 0.25, -0.25, -5, -0
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_2gjvy"]
@@ -1882,7 +1882,7 @@ data = PackedVector3Array(-0.25, 0.25, -5, -0.25, -0.25, -5, 0.25, -0.25, -5, -0
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_xl26b"]
@@ -1922,7 +1922,7 @@ data = PackedVector3Array(-5, 0.5, -5, -5, -0.5, -5, 5, -0.5, -5, -5, 0.5, -5, 5
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = true
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_gsoty"]
@@ -1951,7 +1951,7 @@ data = PackedVector3Array(-2.25, 0.25, -0.25, -2.25, -0.25, -0.25, 2.25, -0.25, 
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = true
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_dfrpw"]
@@ -1980,7 +1980,7 @@ data = PackedVector3Array(-2.25, 0.25, -0.25, -2.25, -0.25, -0.25, 2.25, -0.25, 
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = true
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_qiiwd"]
@@ -2009,7 +2009,7 @@ data = PackedVector3Array(-2.25, 0.25, -0.25, -2.25, -0.25, -0.25, 2.25, -0.25, 
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_hf1ck"]
@@ -2067,7 +2067,7 @@ data = PackedVector3Array(-0.25, 0.25, -0.125, -0.25, -0.25, -0.125, 1.25, -0.25
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_vpri5"]
@@ -2107,7 +2107,7 @@ data = PackedVector3Array(-4.5, 2, -0.25, -4.5, -2, -0.25, 4.5, -2, -0.25, -4.5,
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_by1e7"]
@@ -2147,7 +2147,7 @@ data = PackedVector3Array(-2.25, 0.25, -3.5, -2.25, -0.25, -3.5, 2.25, -0.25, -3
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_nbddp"]
@@ -2187,7 +2187,7 @@ data = PackedVector3Array(2.25, 1.375, -1.25, 2.25, 1.125, -1.25, 2.75, 1.125, -
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_0xos3"]
@@ -2227,7 +2227,7 @@ data = PackedVector3Array(-2.75, 1.375, -1.25, -2.75, 1.125, -1.25, -2.25, 1.125
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = true
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_r8fi6"]
@@ -2256,7 +2256,7 @@ data = PackedVector3Array(-0.25, 0.25, -2, -0.25, -0.25, -2, 0.25, -0.25, -2, -0
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = true
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_e0d8m"]
@@ -2285,7 +2285,7 @@ data = PackedVector3Array(-0.25, 2, -0.25, -0.25, -2, -0.25, 0.25, -2, -0.25, -0
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = true
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_1ba8m"]
@@ -2314,7 +2314,7 @@ data = PackedVector3Array(-0.25, 2, -0.25, -0.25, -2, -0.25, 0.25, -2, -0.25, -0
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = true
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_h4os0"]
@@ -2343,7 +2343,7 @@ data = PackedVector3Array(-0.25, 0.25, -2, -0.25, -0.25, -2, 0.25, -0.25, -2, -0
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_56bm2"]
@@ -2383,7 +2383,7 @@ data = PackedVector3Array(-3.25, 0.25, -1.5, -3.25, -0.25, -1.5, 3.25, -0.25, -1
 script = ExtResource("8_osfnw")
 slippery = false
 friction_speed = 7.0
-override_default_friction = null
+override_default_friction = false
 hazardous = false
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_khwvx"]

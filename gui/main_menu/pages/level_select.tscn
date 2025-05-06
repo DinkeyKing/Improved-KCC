@@ -1,8 +1,8 @@
 [gd_scene load_steps=6 format=3 uid="uid://d3kpe2s1iokex"]
 
-[ext_resource type="Script" path="res://gui/main_menu/pages/level_select.gd" id="1_ph5s5"]
-[ext_resource type="Script" path="res://gui/data_button.gd" id="2_rj7jy"]
-[ext_resource type="Script" path="res://gui/page_button.gd" id="3_0jd1v"]
+[ext_resource type="Script" uid="uid://d3djecseycyaa" path="res://gui/main_menu/pages/level_select.gd" id="1_ph5s5"]
+[ext_resource type="Script" uid="uid://di64ncs087mb5" path="res://gui/data_button.gd" id="2_rj7jy"]
+[ext_resource type="Script" uid="uid://b5iyqdfw1gu1v" path="res://gui/page_button.gd" id="3_0jd1v"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_fbpps"]
 font_size = 34

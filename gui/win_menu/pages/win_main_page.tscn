@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://bxls4mfobreru"]
 
-[ext_resource type="Script" path="res://gui/win_menu/pages/win_main_page.gd" id="1_ibpcl"]
+[ext_resource type="Script" uid="uid://mogv23tnmltf" path="res://gui/win_menu/pages/win_main_page.gd" id="1_ibpcl"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_0uda7"]
 font_size = 42

@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://csnjb4hyoslnw"]
 
-[ext_resource type="Script" path="res://gui/win_menu/win_menu.gd" id="1_npvab"]
+[ext_resource type="Script" uid="uid://dgwrjlbi63l0u" path="res://gui/win_menu/win_menu.gd" id="1_npvab"]
 [ext_resource type="PackedScene" uid="uid://bxls4mfobreru" path="res://gui/win_menu/pages/win_main_page.tscn" id="2_eifr2"]
 
 [node name="WinMenu" type="Control"]

@@ -5,7 +5,7 @@
 [ext_resource type="Resource" uid="uid://dag5cfyc564d" path="res://trenchbroom/fgd/func_godot/func_geo.tres" id="3_sgn6e"]
 [ext_resource type="Resource" uid="uid://0tejhg0txc34" path="res://trenchbroom/fgd/func_godot/func_illusionary.tres" id="4_p4ikd"]
 [ext_resource type="Resource" uid="uid://clykubobpnsiv" path="res://trenchbroom/fgd/func_godot/phong_base.tres" id="5_lktae"]
-[ext_resource type="Script" path="res://addons/func_godot/src/fgd/func_godot_fgd_file.gd" id="7_xb2ug"]
+[ext_resource type="Script" uid="uid://bqf4ucnj8fio0" path="res://addons/func_godot/src/fgd/func_godot_fgd_file.gd" id="7_xb2ug"]
 
 [resource]
 script = ExtResource("7_xb2ug")

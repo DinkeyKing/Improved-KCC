@@ -1,10 +1,10 @@
 [gd_resource type="Resource" script_class="FuncGodotFGDSolidClass" load_steps=6 format=3 uid="uid://cc53jvwfsrb6m"]
 
-[ext_resource type="Script" path="res://addons/func_godot/src/fgd/func_godot_fgd_solid_class.gd" id="1_quf4n"]
+[ext_resource type="Script" uid="uid://cpruq4ua4pd23" path="res://addons/func_godot/src/fgd/func_godot_fgd_solid_class.gd" id="1_quf4n"]
 [ext_resource type="Resource" uid="uid://clykubobpnsiv" path="res://trenchbroom/fgd/func_godot/phong_base.tres" id="1_y81jx"]
 [ext_resource type="Resource" uid="uid://c5raaihge5mev" path="res://trenchbroom/fgd/base/target_base.tres" id="2_2wq4l"]
 [ext_resource type="Resource" uid="uid://doyoyd38qbkn4" path="res://trenchbroom/fgd/base/geo_base.tres" id="3_hpyfo"]
-[ext_resource type="Script" path="res://entities/func/func_mover.gd" id="4_rwgwm"]
+[ext_resource type="Script" uid="uid://n1vegsunohkb" path="res://entities/func/func_mover.gd" id="4_rwgwm"]
 
 [resource]
 script = ExtResource("1_quf4n")

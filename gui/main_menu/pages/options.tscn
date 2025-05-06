@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3 uid="uid://crtsgdt87r3w7"]
 
-[ext_resource type="Script" path="res://gui/main_menu/pages/options.gd" id="1_gsdxo"]
-[ext_resource type="Script" path="res://gui/page_button.gd" id="2_wj5du"]
+[ext_resource type="Script" uid="uid://ck7dfdll7uavh" path="res://gui/main_menu/pages/options.gd" id="1_gsdxo"]
+[ext_resource type="Script" uid="uid://b5iyqdfw1gu1v" path="res://gui/page_button.gd" id="2_wj5du"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_ywxty"]
 font_size = 36

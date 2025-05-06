@@ -2,7 +2,7 @@
 
 [ext_resource type="Material" uid="uid://cm2i6j1u6lofo" path="res://trenchbroom/textures/default_material.tres" id="1_gmwqj"]
 [ext_resource type="Resource" uid="uid://bfb7jjxuhknt2" path="res://trenchbroom/fgd/demo_platformer_fgd.tres" id="2_rw500"]
-[ext_resource type="Script" path="res://addons/func_godot/src/map/func_godot_map_settings.gd" id="3_8tg2p"]
+[ext_resource type="Script" uid="uid://cbc1axl5xmfom" path="res://addons/func_godot/src/map/func_godot_map_settings.gd" id="3_8tg2p"]
 
 [resource]
 script = ExtResource("3_8tg2p")

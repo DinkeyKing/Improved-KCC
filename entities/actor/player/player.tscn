@@ -1,9 +1,9 @@
 [gd_scene load_steps=7 format=3 uid="uid://b2j2cmiomgwuk"]
 
-[ext_resource type="Script" path="res://entities/actor/player/player_body.gd" id="1_s0cn8"]
-[ext_resource type="Script" path="res://entities/actor/player/player.gd" id="1_x08b6"]
-[ext_resource type="Script" path="res://entities/actor/player/camera_controller.gd" id="2_xm16w"]
-[ext_resource type="Script" path="res://entities/actor/player/input_buffer.gd" id="3_c5fqj"]
+[ext_resource type="Script" uid="uid://bkrqihv1vftbq" path="res://entities/actor/player/player_body.gd" id="1_s0cn8"]
+[ext_resource type="Script" uid="uid://bhgvsellgmha" path="res://entities/actor/player/player.gd" id="1_x08b6"]
+[ext_resource type="Script" uid="uid://ds10hnojrsli0" path="res://entities/actor/player/camera_controller.gd" id="2_xm16w"]
+[ext_resource type="Script" uid="uid://b5k00niecsxx7" path="res://entities/actor/player/input_buffer.gd" id="3_c5fqj"]
 [ext_resource type="Shape3D" uid="uid://demx53orcdhj0" path="res://entities/actor/player/player_cylinder_shape.tres" id="3_w3fxv"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_rbrla"]

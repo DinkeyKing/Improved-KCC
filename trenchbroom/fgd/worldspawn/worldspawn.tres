@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="FuncGodotFGDSolidClass" load_steps=3 format=3 uid="uid://c4ibi5g5p0nt1"]
 
-[ext_resource type="Script" path="res://addons/func_godot/src/fgd/func_godot_fgd_solid_class.gd" id="1_d5ynn"]
-[ext_resource type="Script" path="res://entities/worldspawn/worldspawn.gd" id="2_pq4qi"]
+[ext_resource type="Script" uid="uid://cpruq4ua4pd23" path="res://addons/func_godot/src/fgd/func_godot_fgd_solid_class.gd" id="1_d5ynn"]
+[ext_resource type="Script" uid="uid://cfh5vajqb5p3n" path="res://entities/worldspawn/worldspawn.gd" id="2_pq4qi"]
 
 [resource]
 script = ExtResource("1_d5ynn")

@@ -27,9 +27,9 @@ const MAX_SNAP_COLLISIONS: int = 4 # Default: 4
 ## The maximum collision reports for motionless collision checks.
 const MAX_REST_COLLISIONS: int = 4 # Default: 4
 ## The maximum slide iterations allowed.
-const MAX_SLIDE_ITERATIONS: int = 5 # Default: 5
+const MAX_SLIDE_ITERATIONS: int = 7 # Default: 5
 ## The maximum number of constraint iterations
-const MAX_CONSTRAINT_ITERATIONS: int = 7 # Default: 7 (Jolt's CharacterVirtual's is 15)
+const MAX_CONSTRAINT_ITERATIONS: int = 15 # Default: 7 (Jolt's CharacterVirtual's is 15)
 ## General epsilon used to compare floats.
 const CMP_EPSILON: float = 0.00001 # Default: 0.00001
 ## Epsilon used when checking if given planes are equal to each other.
@@ -394,9 +394,6 @@ static func solve_kinematic_constraints(
 			
 			# Add all components together
 			new_velocity = rv_in_slide_dir + combined_constraint_velocity
-		
-		if new_velocity.is_zero_approx():
-			break
 		
 		# Jolt: "If the constraint has velocity we accept the new velocity, otherwise
 		# check that we didn't reverse velocity"
@@ -1200,16 +1197,13 @@ func _collide_and_slide(
 		# Modify output position
 		p_io.transform.origin -= cancelled_travel
 	
-	if new_velocity.is_zero_approx():
-		return # There's not enough velocity left
+	if new_velocity.is_zero_approx() or is_zero_approx(p_io.time_remaining):
+		return # There's not enough velocity or time left, bail
 	
 	# Stop simulating if new velocity still faces a constraint plane
 	for c: Constraint in (kinematic_constraints + dynamic_constraints) as Array[Constraint]:
 		if new_velocity.dot(c.plane_normal) <= -CMP_EPSILON:
 			return
-	
-	if is_zero_approx(p_io.time_remaining):
-		return # Not enough time left to be simulated, bail
 	
 	# Iterate
 	_collide_and_slide(

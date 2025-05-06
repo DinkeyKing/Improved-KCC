@@ -12,7 +12,7 @@ config_version=5
 
 config/name="DemoPlatformer"
 run/main_scene="res://main.tscn"
-config/features=PackedStringArray("4.3", "Forward Plus")
+config/features=PackedStringArray("4.4", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
@@ -109,9 +109,8 @@ box_impulse_up={
 [physics]
 
 common/physics_ticks_per_second=90
-3d/physics_engine="JoltPhysics3D"
+3d/physics_engine="Jolt Physics"
 3d/default_gravity=20.0
-jolt_3d/collisions/report_all_kinematic_contacts=true
 
 [rendering]
 
