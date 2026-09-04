@@ -675,7 +675,7 @@ func snap_to_floor(p_snap_length: float) -> bool:
 	if not collided:
 		return false
 	
-	var travel: Vector3 = motion_result.get_meta("travel", motion_result.get_travel()) as Vector3
+	var travel: Vector3 = _get_travel_typesafe(motion_result)
 	var result_state := CollisionState.new()
 	_set_collision_state(motion_result, result_state)
 	
@@ -1047,7 +1047,7 @@ func _collide_and_slide(
 	var collided: bool = _move_and_collide(motion_result, motion_params, true)
 	
 	# Modify output position by adding the safe fraction of the motion
-	var travel: Vector3 = motion_result.get_meta("travel", motion_result.get_travel()) as Vector3
+	var travel: Vector3 = _get_travel_typesafe(motion_result)
 	p_io.transform.origin += travel
 	
 	# Reduce remaining time by time spent moving
@@ -1096,11 +1096,7 @@ func _collide_and_slide(
 			if _check_floor_status(p_io.transform, max_step_height, floor_state, true):
 				floor_below = floor_state.s_floor or floor_state.s_wall_floor
 				floor_surface_below = floor_state.s_floor_surface_only
-				floor_check_travel = (
-						floor_state.motion_result.get_meta(
-								"travel", floor_state.motion_result.get_travel()
-						) as Vector3
-				)
+				floor_check_travel = _get_travel_typesafe(floor_state.motion_result)
 				# NOTE: Recovery can be more than the safe margin, we have to take it into account.
 				touching_floor = (
 					floor_below
@@ -1433,7 +1429,7 @@ func _step_move(
 	# NOTE : We only need the travel of the motion, so no collision report is needed.
 	
 	# See how much we travelled up
-	var up_travel := up_motion_result.get_meta("travel", up_motion_result.get_travel()) as Vector3
+	var up_travel := _get_travel_typesafe(up_motion_result)
 	var up_travel_length: float = up_travel.dot(up_direction)
 	if up_travel_length <= safe_margin:
 		return false # We couldn't move up a significant distance, bail
@@ -1494,9 +1490,7 @@ func _step_move(
 		return false # In the air, stepping failed
 	
 	# Update step move position with downward travel
-	var down_travel := (
-			down_motion_result.get_meta("travel", down_motion_result.get_travel()) as Vector3
-	)
+	var down_travel := _get_travel_typesafe(down_motion_result)
 	step_move_transform.origin += down_travel
 	
 	var down_result_state := CollisionState.new()
@@ -1647,6 +1641,15 @@ func _move_and_collide(
 		global_position += travel
 	
 	return collided
+
+
+## Type safe wrapper around `.get_meta` to prevent compiler warnings.
+func _get_travel_typesafe(p_result: PhysicsTestMotionResult3D) -> Vector3:
+	var travel: Variant = p_result.get_meta("travel", p_result.get_travel())
+	if travel is Vector3:
+		return travel
+	assert(false, "Adjusted travel metadata must be a Vector3.")
+	return p_result.get_travel()
 
 
 ## Updates the overall state with the given collision state, assuming it's the latest.
